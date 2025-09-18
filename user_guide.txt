@@ -1,0 +1,49 @@
+1) npm create vite@latest purple_Frontend
+
+2)  cd purple_Frontend
+
+3) npm install
+
+4) npm install -D tailwindcss postcss autoprefixer
+
+
+5) npx tailwindcss init -p  (if its not working then run that (npx tailwindcss-cli init -p))
+
+6)  npm install -D @tailwindcss/postcss
+
+7) npm install tailwindcss @tailwindcss/vite  / npm install -D @tailwindcss/postcss
+
+8) del postcss.config.js
+
+9) past that in tailwind.config.js
+
+
+module.exports = {
+  purge: [],
+  darkMode: false, // or 'media' or 'class'
+  theme: {
+    extend: {},
+  },
+  variants: {
+    extend: {},
+  },
+  plugins: [],
+}
+
+
+
+10) past that in vite.config.js
+
+
+import { defineConfig } from 'vite'
+import tailwindcss from '@tailwindcss/vite'
+
+export default defineConfig({
+  plugins: [
+    tailwindcss(),
+  ],
+})
+
+
+
+11) npm run dev
