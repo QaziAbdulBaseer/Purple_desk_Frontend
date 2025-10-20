@@ -17,7 +17,7 @@ const Sidebar = ({ isOpen, activeSection, setActiveSection, onClose }) => {
     { id: 'overview', label: 'Overview', icon: '📊' },
     { id: 'analytics', label: 'Analytics', icon: '📈' },
     { id: 'users', label: 'Users', icon: '👥' },
-    { id: 'tasks', label: 'Tasks', icon: '✅' },
+    { id: 'Location', label: 'Location', icon: '✅' },
     { id: 'documents', label: 'Documents', icon: '📄' },
     { id: 'settings', label: 'Settings', icon: '⚙️' },
   ];

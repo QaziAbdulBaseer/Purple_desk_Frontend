@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import Sidebar from '../../components/Sidebar';
 import Header from '../../components/Header';
 import { useSelector } from 'react-redux';
+import Locations from '../../components/AdminComponents/Locations';
 
 
 const Dashboard = () => {
@@ -36,113 +37,120 @@ const Dashboard = () => {
 
   const renderContent = () => {
     switch (activeSection) {
-      case 'overview':
-        return (
-          <div>
-            <h2 className="text-2xl font-bold mb-6">Overview</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              {statsData.overview.map((stat, index) => (
-                <div key={index} className="bg-white rounded-lg shadow p-6">
-                  <h3 className="text-gray-500 text-sm font-medium">{stat.title}</h3>
-                  <div className="flex items-baseline mt-2">
-                    <span className="text-2xl font-bold">{stat.value}</span>
-                    <span className={`ml-2 text-sm ${stat.positive ? 'text-green-500' : 'text-red-500'}`}>
-                      {stat.change}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
+      // case 'overview':
+      //   return (
+      //     <div>
+      //       <h2 className="text-2xl font-bold mb-6">Overview</h2>
+      //       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      //         {statsData.overview.map((stat, index) => (
+      //           <div key={index} className="bg-white rounded-lg shadow p-6">
+      //             <h3 className="text-gray-500 text-sm font-medium">{stat.title}</h3>
+      //             <div className="flex items-baseline mt-2">
+      //               <span className="text-2xl font-bold">{stat.value}</span>
+      //               <span className={`ml-2 text-sm ${stat.positive ? 'text-green-500' : 'text-red-500'}`}>
+      //                 {stat.change}
+      //               </span>
+      //             </div>
+      //           </div>
+      //         ))}
+      //       </div>
             
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-medium mb-4">Recent Activity</h3>
-              <div className="space-y-4">
-                {recentActivities.map((activity, index) => (
-                  <div key={index} className="flex items-start">
-                    <div className="flex-shrink-0 h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                      <span className="text-blue-600 font-medium">
-                        {activity.user.charAt(0)}
-                      </span>
-                    </div>
-                    <div className="ml-4">
-                      <p className="text-gray-900">
-                        <span className="font-medium">{activity.user}</span> {activity.action}
-                      </p>
-                      <p className="text-gray-500 text-sm">{activity.time}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        );
+      //       <div className="bg-white rounded-lg shadow p-6">
+      //         <h3 className="text-lg font-medium mb-4">Recent Activity</h3>
+      //         <div className="space-y-4">
+      //           {recentActivities.map((activity, index) => (
+      //             <div key={index} className="flex items-start">
+      //               <div className="flex-shrink-0 h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+      //                 <span className="text-blue-600 font-medium">
+      //                   {activity.user.charAt(0)}
+      //                 </span>
+      //               </div>
+      //               <div className="ml-4">
+      //                 <p className="text-gray-900">
+      //                   <span className="font-medium">{activity.user}</span> {activity.action}
+      //                 </p>
+      //                 <p className="text-gray-500 text-sm">{activity.time}</p>
+      //               </div>
+      //             </div>
+      //           ))}
+      //         </div>
+      //       </div>
+      //     </div>
+      //   );
       
-      case 'analytics':
-        return (
-          <div>
-            <h2 className="text-2xl font-bold mb-6">Analytics</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              {statsData.performance.map((stat, index) => (
-                <div key={index} className="bg-white rounded-lg shadow p-6">
-                  <h3 className="text-gray-500 text-sm font-medium">{stat.title}</h3>
-                  <div className="flex items-baseline mt-2">
-                    <span className="text-2xl font-bold">{stat.value}</span>
-                    <span className={`ml-2 text-sm ${stat.positive ? 'text-green-500' : 'text-red-500'}`}>
-                      {stat.change}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
+      // case 'analytics':
+      //   return (
+      //     <div>
+      //       <h2 className="text-2xl font-bold mb-6">Analytics</h2>
+      //       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      //         {statsData.performance.map((stat, index) => (
+      //           <div key={index} className="bg-white rounded-lg shadow p-6">
+      //             <h3 className="text-gray-500 text-sm font-medium">{stat.title}</h3>
+      //             <div className="flex items-baseline mt-2">
+      //               <span className="text-2xl font-bold">{stat.value}</span>
+      //               <span className={`ml-2 text-sm ${stat.positive ? 'text-green-500' : 'text-red-500'}`}>
+      //                 {stat.change}
+      //               </span>
+      //             </div>
+      //           </div>
+      //         ))}
+      //       </div>
             
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-medium mb-4">Performance Chart</h3>
-              <div className="h-64 flex items-center justify-center bg-gray-100 rounded-lg">
-                <p className="text-gray-500">Performance chart visualization would be here</p>
-              </div>
-            </div>
-          </div>
-        );
+      //       <div className="bg-white rounded-lg shadow p-6">
+      //         <h3 className="text-lg font-medium mb-4">Performance Chart</h3>
+      //         <div className="h-64 flex items-center justify-center bg-gray-100 rounded-lg">
+      //           <p className="text-gray-500">Performance chart visualization would be here</p>
+      //         </div>
+      //       </div>
+      //     </div>
+      //   );
       
-      case 'settings':
+      // case 'settings':
+      //   return (
+      //     <div>
+      //       <h2 className="text-2xl font-bold mb-6">Settings</h2>
+      //       <div className="bg-white rounded-lg shadow p-6">
+      //         <h3 className="text-lg font-medium mb-4">Account Settings</h3>
+      //         <div className="space-y-4">
+      //           <div>
+      //             <label className="block text-sm font-medium text-gray-700">Username</label>
+      //             <input
+      //               type="text"
+      //               defaultValue={userData?.username || ''}
+      //               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border"
+      //             />
+      //           </div>
+      //           <div>
+      //             <label className="block text-sm font-medium text-gray-700">Email</label>
+      //             <input
+      //               type="email"
+      //               defaultValue={userData?.email || ''}
+      //               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border"
+      //             />
+      //           </div>
+      //           <div>
+      //             <label className="block text-sm font-medium text-gray-700">Role</label>
+      //             <input
+      //               type="text"
+      //               defaultValue={userData?.role || ''}
+      //               disabled
+      //               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm bg-gray-100 sm:text-sm p-2 border"
+      //             />
+      //           </div>
+      //           <button className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">
+      //             Save Changes
+      //           </button>
+      //         </div>
+      //       </div>
+      //     </div>
+      //   );
+      
+
+
+      case 'Location':
         return (
-          <div>
-            <h2 className="text-2xl font-bold mb-6">Settings</h2>
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-medium mb-4">Account Settings</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Username</label>
-                  <input
-                    type="text"
-                    defaultValue={userData?.username || ''}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Email</label>
-                  <input
-                    type="email"
-                    defaultValue={userData?.email || ''}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Role</label>
-                  <input
-                    type="text"
-                    defaultValue={userData?.role || ''}
-                    disabled
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm bg-gray-100 sm:text-sm p-2 border"
-                  />
-                </div>
-                <button className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">
-                  Save Changes
-                </button>
-              </div>
-            </div>
-          </div>
-        );
+        <div> <Locations />
+        </div>)
       
       default:
         return (
