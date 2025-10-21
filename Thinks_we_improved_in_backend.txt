@@ -1,0 +1,3 @@
+1) I have to imporved the Hours of operation update and create functions. (Not allowed to wrong date with day. Also not allowed to store overlaping hours)
+
+2)      

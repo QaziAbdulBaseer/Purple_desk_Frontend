@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
+import { Link } from 'react-router-dom';
 
 const Locations = () => {
     const userData = useSelector((state) => state.auth.userData);
@@ -237,7 +238,9 @@ const Locations = () => {
                     {locations.map((location) => (
                         <div key={location.location_id} className="bg-white rounded-lg shadow-md border border-gray-200 p-6 hover:shadow-lg transition-shadow">
                             <div className="flex justify-between items-start mb-4">
+                                <Link to={`/hours-of-operation/${location.location_id}`}>
                                 <h3 className="text-lg font-semibold text-gray-900">{location.location_name}</h3>
+                                </Link>
                                 <div className="flex space-x-2">
                                     <button
                                         onClick={() => handleEdit(location)}

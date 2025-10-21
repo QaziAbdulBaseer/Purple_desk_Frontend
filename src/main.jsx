@@ -11,6 +11,8 @@ import Home from './Pages/Home.';
 import Login from './Pages/Login';
 import Dashboard from './Pages/AdminPages/dashboard';
 import AuthLayout from './components/AuthLayout';
+import HoursOfOperation from './components/AdminComponents/HoursOfOperation';
+import HoursOperation from './Pages/AdminPages/HoursOperation';
 
 // import Home from './Pages/Home.jsx';
 
@@ -54,6 +56,16 @@ const router = createBrowserRouter([
         element: (
           <AuthLayout authentication={true} userRole={['admin']}>
             <Dashboard />
+          </AuthLayout>
+        ),
+      },
+
+
+        {
+        path: "/hours-of-operation/:location_id",
+        element: (
+          <AuthLayout authentication={true} userRole={['admin']}>
+            <HoursOperation />
           </AuthLayout>
         ),
       },
