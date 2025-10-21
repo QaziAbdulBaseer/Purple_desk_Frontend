@@ -4,11 +4,11 @@ import { useSelector } from 'react-redux';
 import Locations from '../../components/AdminComponents/Locations';
 import Sidebar from '../../components/AdminComponents/Sidebar';
 import Header from '../../components/AdminComponents/Header';
+import JumpPassComp from '../../components/AdminComponents/JumpPassComp';
 import { useParams } from 'react-router-dom';
-import HoursOfOperation from '../../components/AdminComponents/HoursOfOperation';
 
 
-const HoursOperation = () => {
+const JumpPass = () => {
      const { location_id } = useParams();
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [activeSection, setActiveSection] = useState('Hours of Operation');
@@ -21,8 +21,10 @@ const HoursOperation = () => {
         switch (activeSection) {
             case 'Hours of Operation':
                 return (
-                    <div> <HoursOfOperation />
-                    </div>)
+                    <div> 
+                        <JumpPassComp />
+                    </div>
+                    )
 
             default:
                 return (
@@ -43,6 +45,8 @@ const HoursOperation = () => {
                 onClose={() => setSidebarOpen(false)}
                 locationId={location_id} // ← PASS IT HERE
             />
+
+
             <div className="flex-1 flex flex-col overflow-hidden">
                 <Header
                     onMenuClick={() => setSidebarOpen(true)}
@@ -57,4 +61,4 @@ const HoursOperation = () => {
     );
 };
 
-export default HoursOperation;
+export default JumpPass;
