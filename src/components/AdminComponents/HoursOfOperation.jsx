@@ -1,6 +1,4 @@
 
-
-
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { useParams } from 'react-router-dom';
@@ -16,6 +14,12 @@ const HoursOfOperation = () => {
     const [editingHour, setEditingHour] = useState(null);
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [fieldErrors, setFieldErrors] = useState({});
+    
+    // New state for conflict management
+    const [conflicts, setConflicts] = useState([]);
+    const [showConflictPopup, setShowConflictPopup] = useState(false);
+    const [pendingSubmission, setPendingSubmission] = useState(null);
+    const [conflictResolved, setConflictResolved] = useState(false);
 
     // Form state
     const [formData, setFormData] = useState({
@@ -88,401 +92,100 @@ const HoursOfOperation = () => {
         }
     };
 
-    // Check for date conflicts for closed type
-    const checkDateConflict = (newHour, existingHours, editingId = null) => {
-        const errors = [];
+    // Enhanced conflict detection function
+    const detectConflicts = (newHour, existingHours, editingId = null) => {
+        const conflicts = [];
         
-        // Only check for closed type or when adding closed over existing hours
-        if (newHour.hours_type === 'closed') {
-            // Check if there are existing hours (non-closed) for the same date
-            existingHours.forEach(existing => {
-                // Skip the hour being edited
-                if (editingId && existing.hours_of_operation_id === editingId) return;
-                
-                // Skip other closed hours for conflict check (we'll check duplicate closed separately)
-                if (existing.hours_type === 'closed') return;
-
-                if (newHour.starting_date && existing.starting_date) {
-                    const newStartDate = new Date(newHour.starting_date);
-                    const newEndDate = newHour.ending_date ? new Date(newHour.ending_date) : newStartDate;
-                    const existingStartDate = new Date(existing.starting_date);
-                    const existingEndDate = existing.ending_date ? new Date(existing.ending_date) : existingStartDate;
-
-                    // Check if date ranges overlap
-                    if (!(newEndDate < existingStartDate || newStartDate > existingEndDate)) {
-                        errors.push(`Cannot mark as closed because there are existing ${existing.hours_type} hours from ${new Date(existing.starting_date).toLocaleDateString()}${existing.ending_date ? ` to ${new Date(existing.ending_date).toLocaleDateString()}` : ''}`);
-                    }
-                }
-            });
-
-            // Check for duplicate closed hours
-            existingHours.forEach(existing => {
-                // Skip the hour being edited
-                if (editingId && existing.hours_of_operation_id === editingId) return;
-                
-                if (existing.hours_type === 'closed') {
-                    if (newHour.starting_date && existing.starting_date) {
-                        const newStartDate = new Date(newHour.starting_date);
-                        const newEndDate = newHour.ending_date ? new Date(newHour.ending_date) : newStartDate;
-                        const existingStartDate = new Date(existing.starting_date);
-                        const existingEndDate = existing.ending_date ? new Date(existing.ending_date) : existingStartDate;
-
-                        // Check if date ranges overlap
-                        if (!(newEndDate < existingStartDate || newStartDate > existingEndDate)) {
-                            errors.push(`Closed hours already exist for ${new Date(existing.starting_date).toLocaleDateString()}${existing.ending_date ? ` to ${new Date(existing.ending_date).toLocaleDateString()}` : ''}`);
-                        }
-                    }
-                }
-            });
-        } else {
-            // Check if new non-closed hours conflict with existing closed hours
-            existingHours.forEach(existing => {
-                // Skip the hour being edited
-                if (editingId && existing.hours_of_operation_id === editingId) return;
-                
-                if (existing.hours_type === 'closed') {
-                    if (newHour.starting_date && existing.starting_date) {
-                        const newStartDate = new Date(newHour.starting_date);
-                        const newEndDate = newHour.ending_date ? new Date(newHour.ending_date) : newStartDate;
-                        const existingStartDate = new Date(existing.starting_date);
-                        const existingEndDate = existing.ending_date ? new Date(existing.ending_date) : existingStartDate;
-
-                        // Check if date ranges overlap
-                        if (!(newEndDate < existingStartDate || newStartDate > existingEndDate)) {
-                            errors.push(`Cannot add hours because the location is closed on ${new Date(existing.starting_date).toLocaleDateString()}${existing.ending_date ? ` to ${new Date(existing.ending_date).toLocaleDateString()}` : ''}`);
-                        }
-                    }
-                }
-            });
-        }
-
-        return errors;
-    };
-
-    // Check for time slot overlaps
-    const checkTimeOverlap = (newHour, existingHours, editingId = null) => {
-        const errors = [];
+        const newStartDate = newHour.starting_date ? new Date(newHour.starting_date) : null;
+        const newEndDate = newHour.ending_date ? new Date(newHour.ending_date) : newStartDate;
         
-        // Don't check for closed type
-        if (newHour.hours_type === 'closed') return errors;
-
-        const newStart = newHour.start_time;
-        const newEnd = newHour.end_time;
-        
-        // For opening types, only check start time
-        if ((newHour.hours_type === 'early_opening' || newHour.hours_type === 'late_opening') && !newStart) {
-            return errors;
-        }
-        
-        // For closing types, only check end time
-        if ((newHour.hours_type === 'early_closing' || newHour.hours_type === 'late_closing') && !newEnd) {
-            return errors;
-        }
-        
-        // For other types, check both times
-        if ((newHour.hours_type === 'regular' || newHour.hours_type === 'special') && (!newStart || !newEnd)) {
-            return errors;
-        }
-
-        // Convert time strings to minutes for easier comparison
-        const timeToMinutes = (timeStr) => {
-            if (!timeStr) return 0;
-            const [hours, minutes] = timeStr.split(':').map(Number);
-            return hours * 60 + minutes;
-        };
-
-        const newStartMinutes = timeToMinutes(newStart);
-        const newEndMinutes = timeToMinutes(newEnd);
-
         existingHours.forEach(existing => {
             // Skip the hour being edited
             if (editingId && existing.hours_of_operation_id === editingId) return;
             
-            // Skip closed hours
-            if (existing.hours_type === 'closed') return;
+            const existingStartDate = existing.starting_date ? new Date(existing.starting_date) : null;
+            const existingEndDate = existing.ending_date ? new Date(existing.ending_date) : existingStartDate;
 
-            // For regular hours, check by day name
-            if (newHour.hours_type === 'regular' && existing.hours_type === 'regular') {
-                if (newHour.starting_day_name === existing.starting_day_name) {
-                    const existingStartMinutes = timeToMinutes(existing.start_time);
-                    const existingEndMinutes = timeToMinutes(existing.end_time);
+            // Check if date ranges overlap
+            const datesOverlap = newStartDate && existingStartDate && 
+                !(newEndDate < existingStartDate || newStartDate > existingEndDate);
 
-                    // Check for overlap
-                    if ((newStartMinutes >= existingStartMinutes && newStartMinutes < existingEndMinutes) ||
-                        (newEndMinutes > existingStartMinutes && newEndMinutes <= existingEndMinutes) ||
-                        (newStartMinutes <= existingStartMinutes && newEndMinutes >= existingEndMinutes)) {
-                        errors.push(`Time slot overlaps with existing ${existing.hours_type} hours on ${existing.starting_day_name} (${formatTime(existing.start_time)} - ${formatTime(existing.end_time)})`);
-                    }
+            if (datesOverlap) {
+                // Conflict: Trying to close when special hours exist
+                if (newHour.hours_type === 'closed' && existing.hours_type !== 'closed') {
+                    conflicts.push({
+                        type: 'CLOSED_WITH_SPECIAL_HOURS',
+                        message: `Cannot mark as closed because there are existing ${existing.hours_type} hours`,
+                        conflictingHour: existing,
+                        severity: 'high'
+                    });
                 }
-            }
-
-            // For special hours with dates, check by date range
-            if ((newHour.hours_type === 'special' || newHour.hours_type.includes('opening') || newHour.hours_type.includes('closing')) &&
-                (existing.hours_type === 'special' || existing.hours_type.includes('opening') || existing.hours_type.includes('closing'))) {
                 
-                if (newHour.starting_date && existing.starting_date) {
-                    const newStartDate = new Date(newHour.starting_date);
-                    const newEndDate = newHour.ending_date ? new Date(newHour.ending_date) : newStartDate;
-                    const existingStartDate = new Date(existing.starting_date);
-                    const existingEndDate = existing.ending_date ? new Date(existing.ending_date) : existingStartDate;
+                // Conflict: Trying to add hours when closed
+                if (newHour.hours_type !== 'closed' && existing.hours_type === 'closed') {
+                    conflicts.push({
+                        type: 'HOURS_WHEN_CLOSED',
+                        message: `Cannot add hours because the location is closed`,
+                        conflictingHour: existing,
+                        severity: 'high'
+                    });
+                }
 
-                    // Check if date ranges overlap
-                    if (!(newEndDate < existingStartDate || newStartDate > existingEndDate)) {
-                        const existingStartMinutes = timeToMinutes(existing.start_time);
-                        const existingEndMinutes = timeToMinutes(existing.end_time);
-
-                        // Special handling for different hour type combinations
-                        
-                        // Case 1: Special hours with closing types (early_closing, late_closing)
-                        if (newHour.hours_type === 'special' && (existing.hours_type === 'early_closing' || existing.hours_type === 'late_closing')) {
-                            // Special hours should be allowed with closing types as long as they don't extend beyond closing time
-                            if (newEndMinutes > existingEndMinutes) {
-                                const dateRange = existing.ending_date ? 
-                                    `${new Date(existing.starting_date).toLocaleDateString()} to ${new Date(existing.ending_date).toLocaleDateString()}` :
-                                    new Date(existing.starting_date).toLocaleDateString();
-                                errors.push(`Special hours cannot extend beyond ${existing.hours_type} time (${formatTime(existing.end_time)}) on ${dateRange}`);
-                            }
-                        }
-                        // Case 2: Closing types with special hours
-                        else if ((newHour.hours_type === 'early_closing' || newHour.hours_type === 'late_closing') && existing.hours_type === 'special') {
-                            // Closing types should allow special hours that end before or at closing time
-                            if (existingEndMinutes > newEndMinutes) {
-                                const dateRange = existing.ending_date ? 
-                                    `${new Date(existing.starting_date).toLocaleDateString()} to ${new Date(existing.ending_date).toLocaleDateString()}` :
-                                    new Date(existing.starting_date).toLocaleDateString();
-                                errors.push(`Existing special hours (${formatTime(existing.start_time)} - ${formatTime(existing.end_time)}) extend beyond ${newHour.hours_type} time (${formatTime(newHour.end_time)}) on ${dateRange}`);
-                            }
-                        }
-                        // Case 3: Special hours with opening types (early_opening, late_opening)
-                        else if (newHour.hours_type === 'special' && (existing.hours_type === 'early_opening' || existing.hours_type === 'late_opening')) {
-                            // Special hours should be allowed with opening types as long as they don't start before opening time
-                            if (newStartMinutes < existingStartMinutes) {
-                                const dateRange = existing.ending_date ? 
-                                    `${new Date(existing.starting_date).toLocaleDateString()} to ${new Date(existing.ending_date).toLocaleDateString()}` :
-                                    new Date(existing.starting_date).toLocaleDateString();
-                                errors.push(`Special hours cannot start before ${existing.hours_type} time (${formatTime(existing.start_time)}) on ${dateRange}`);
-                            }
-                        }
-                        // Case 4: Opening types with special hours
-                        else if ((newHour.hours_type === 'early_opening' || newHour.hours_type === 'late_opening') && existing.hours_type === 'special') {
-                            // Opening types should allow special hours that start after or at opening time
-                            if (existingStartMinutes < newStartMinutes) {
-                                const dateRange = existing.ending_date ? 
-                                    `${new Date(existing.starting_date).toLocaleDateString()} to ${new Date(existing.ending_date).toLocaleDateString()}` :
-                                    new Date(existing.starting_date).toLocaleDateString();
-                                errors.push(`Existing special hours (${formatTime(existing.start_time)} - ${formatTime(existing.end_time)}) start before ${newHour.hours_type} time (${formatTime(newHour.start_time)}) on ${dateRange}`);
-                            }
-                        }
-                        // Case 5: Same type conflicts (special vs special, closing vs closing, etc.)
-                        else if (newHour.hours_type === existing.hours_type) {
-                            // For same types, check full overlap
-                            if ((newStartMinutes >= existingStartMinutes && newStartMinutes < existingEndMinutes) ||
-                                (newEndMinutes > existingStartMinutes && newEndMinutes <= existingEndMinutes) ||
-                                (newStartMinutes <= existingStartMinutes && newEndMinutes >= existingEndMinutes)) {
-                                const dateRange = existing.ending_date ? 
-                                    `${new Date(existing.starting_date).toLocaleDateString()} to ${new Date(existing.ending_date).toLocaleDateString()}` :
-                                    new Date(existing.starting_date).toLocaleDateString();
-                                errors.push(`Time slot overlaps with existing ${existing.hours_type} hours on ${dateRange} (${formatTime(existing.start_time)} - ${formatTime(existing.end_time)})`);
-                            }
-                        }
-                        // Case 6: Different special types (opening vs closing) - should generally be allowed
-                        else if ((newHour.hours_type.includes('opening') && existing.hours_type.includes('closing')) ||
-                                 (newHour.hours_type.includes('closing') && existing.hours_type.includes('opening'))) {
-                            // Opening and closing types can coexist on the same day
-                            // No conflict error for this case
-                        }
-                        // Default case: For all other combinations, use the original logic
-                        else {
-                            // For opening types, only check if start time conflicts
-                            if (newHour.hours_type === 'early_opening' || newHour.hours_type === 'late_opening') {
-                                if (newStartMinutes >= existingStartMinutes && newStartMinutes < existingEndMinutes) {
-                                    const dateRange = existing.ending_date ? 
-                                        `${new Date(existing.starting_date).toLocaleDateString()} to ${new Date(existing.ending_date).toLocaleDateString()}` :
-                                        new Date(existing.starting_date).toLocaleDateString();
-                                    errors.push(`Start time conflicts with existing ${existing.hours_type} hours on ${dateRange} (${formatTime(existing.start_time)} - ${formatTime(existing.end_time)})`);
-                                }
-                            }
-                            // For closing types, only check if end time conflicts
-                            else if (newHour.hours_type === 'early_closing' || newHour.hours_type === 'late_closing') {
-                                if (newEndMinutes > existingStartMinutes && newEndMinutes <= existingEndMinutes) {
-                                    const dateRange = existing.ending_date ? 
-                                        `${new Date(existing.starting_date).toLocaleDateString()} to ${new Date(existing.ending_date).toLocaleDateString()}` :
-                                        new Date(existing.starting_date).toLocaleDateString();
-                                    errors.push(`End time conflicts with existing ${existing.hours_type} hours on ${dateRange} (${formatTime(existing.start_time)} - ${formatTime(existing.end_time)})`);
-                                }
-                            }
-                            // For other types, check full time range
-                            else {
-                                if ((newStartMinutes >= existingStartMinutes && newStartMinutes < existingEndMinutes) ||
-                                    (newEndMinutes > existingStartMinutes && newEndMinutes <= existingEndMinutes) ||
-                                    (newStartMinutes <= existingStartMinutes && newEndMinutes >= existingEndMinutes)) {
-                                    const dateRange = existing.ending_date ? 
-                                        `${new Date(existing.starting_date).toLocaleDateString()} to ${new Date(existing.ending_date).toLocaleDateString()}` :
-                                        new Date(existing.starting_date).toLocaleDateString();
-                                    errors.push(`Time slot overlaps with existing ${existing.hours_type} hours on ${dateRange} (${formatTime(existing.start_time)} - ${formatTime(existing.end_time)})`);
-                                }
-                            }
-                        }
+                // Time-based conflicts for non-closed types
+                if (newHour.hours_type !== 'closed' && existing.hours_type !== 'closed') {
+                    const timeConflict = checkTimeConflict(newHour, existing);
+                    if (timeConflict) {
+                        conflicts.push({
+                            type: 'TIME_OVERLAP',
+                            message: timeConflict,
+                            conflictingHour: existing,
+                            severity: 'medium'
+                        });
                     }
                 }
+
+                // Same type conflicts (duplicate closed, etc.)
+                if (newHour.hours_type === existing.hours_type && newHour.hours_type === 'closed') {
+                    conflicts.push({
+                        type: 'DUPLICATE_CLOSED',
+                        message: `Closed hours already exist for this date range`,
+                        conflictingHour: existing,
+                        severity: 'high'
+                    });
+                }
             }
         });
 
-        return errors;
+        return conflicts;
     };
 
-    // Get auth token
-    const getAuthToken = () => {
-        return localStorage.getItem('accessToken') || userData?.token;
+    // Check time conflicts between two hours
+    const checkTimeConflict = (hour1, hour2) => {
+        if (!hour1.start_time || !hour1.end_time || !hour2.start_time || !hour2.end_time) {
+            return null;
+        }
+
+        const timeToMinutes = (timeStr) => {
+            const [hours, minutes] = timeStr.split(':').map(Number);
+            return hours * 60 + minutes;
+        };
+
+        const start1 = timeToMinutes(hour1.start_time);
+        const end1 = timeToMinutes(hour1.end_time);
+        const start2 = timeToMinutes(hour2.start_time);
+        const end2 = timeToMinutes(hour2.end_time);
+
+        if ((start1 >= start2 && start1 < end2) ||
+            (end1 > start2 && end1 <= end2) ||
+            (start1 <= start2 && end1 >= end2)) {
+            return `Time overlap: ${formatTime(hour2.start_time)} - ${formatTime(hour2.end_time)}`;
+        }
+
+        return null;
     };
 
-    // Fetch location details
-    const fetchLocation = async () => {
-        try {
-            const token = getAuthToken();
-            const response = await fetch(`${import.meta.env.VITE_BackendApi}/locations/${location_id}`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                console.log("This is the location data =", data);
-                setLocation(data);
-            }
-        } catch (err) {
-            console.error('Failed to fetch location:', err);
-        }
-    };
-
-    // Fetch hours of operation
-    const fetchHours = async () => {
-        if (!location_id) return;
-
-        setIsLoading(true);
-        setError('');
-        try {
-            const token = getAuthToken();
-            const response = await fetch(`${import.meta.env.VITE_BackendApi}/hours/${location_id}/`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to fetch hours of operation');
-            }
-
-            const data = await response.json();
-            setHours(data);
-        } catch (err) {
-            setError(err.message);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    // Handle form input changes with dynamic validation
-    const handleInputChange = (e) => {
-        const { name, value, type, checked } = e.target;
-
-        // Auto-fill day names when dates are selected
-        if (name === 'starting_date' && value) {
-            const dayName = getDayNameFromDate(value);
-            setFormData(prev => ({
-                ...prev,
-                [name]: value,
-                starting_day_name: dayName
-            }));
-        } else if (name === 'ending_date' && value) {
-            const dayName = getDayNameFromDate(value);
-            setFormData(prev => ({
-                ...prev,
-                [name]: value,
-                ending_day_name: dayName
-            }));
-        }
-        // If changing to closed type, clear time fields
-        else if (name === 'hours_type' && value === 'closed') {
-            setFormData(prev => ({
-                ...prev,
-                [name]: value,
-                start_time: '',
-                end_time: '',
-                schedule_with: '',
-                ages_allowed: ''
-            }));
-        }
-        // If changing to opening/closing types, clear schedule_with and ages_allowed
-        else if (name === 'hours_type' && (value === 'early_closing' || value === 'late_closing' || value === 'early_opening' || value === 'late_opening')) {
-            setFormData(prev => ({
-                ...prev,
-                [name]: value,
-                schedule_with: '',
-                ages_allowed: ''
-            }));
-        } else {
-            setFormData(prev => ({
-                ...prev,
-                [name]: type === 'checkbox' ? checked : value
-            }));
-        }
-
-        // Clear field error when user starts typing
-        if (fieldErrors[name]) {
-            setFieldErrors(prev => ({
-                ...prev,
-                [name]: ''
-            }));
-        }
-    };
-
-    // Reset form
-    const resetForm = () => {
-        setFormData({
-            hours_type: 'regular',
-            schedule_with: '',
-            ages_allowed: '',
-            starting_date: '',
-            ending_date: '',
-            starting_day_name: '',
-            ending_day_name: '',
-            start_time: '',
-            end_time: '',
-            reason: '',
-            is_modified: false
-        });
-        setEditingHour(null);
-        setError('');
-        setSuccess('');
-        setFieldErrors({});
-    };
-
-    // Dynamic field requirements based on hours type
-    const getRequiredFields = (hoursType) => {
-        switch (hoursType) {
-            case 'regular':
-                return ['starting_day_name', 'start_time', 'end_time', 'schedule_with', 'ages_allowed'];
-            case 'special':
-                return ['starting_day_name', 'start_time', 'end_time', 'starting_date', 'schedule_with', 'ages_allowed'];
-            case 'early_closing':
-            case 'late_closing':
-                return ['starting_day_name', 'end_time', 'starting_date', 'reason'];
-            case 'early_opening':
-            case 'late_opening':
-                return ['starting_day_name', 'start_time', 'starting_date', 'reason'];
-            case 'closed':
-                return ['starting_date', 'reason'];
-            default:
-                return ['starting_day_name', 'start_time', 'end_time'];
-        }
-    };
-
-    // Validate form based on hours type
-    const validateForm = () => {
+    // Enhanced validation with conflict detection
+    const validateFormWithConflicts = () => {
         const requiredFields = getRequiredFields(formData.hours_type);
         const errors = {};
 
@@ -492,7 +195,7 @@ const HoursOfOperation = () => {
             }
         });
 
-        // Time validation - only for types that require both times
+        // Time validation
         if ((formData.hours_type === 'regular' || formData.hours_type === 'special') && formData.start_time && formData.end_time) {
             if (formData.start_time >= formData.end_time) {
                 errors.end_time = 'End time must be after start time';
@@ -506,46 +209,94 @@ const HoursOfOperation = () => {
             }
         }
 
-        // Check for time slot overlaps (for non-closed types)
-        if (formData.hours_type !== 'closed') {
-            const overlapErrors = checkTimeOverlap(formData, hours, editingHour?.hours_of_operation_id);
-            if (overlapErrors.length > 0) {
-                errors.time_overlap = overlapErrors.join(', ');
-            }
-        }
-
-        // Check for date conflicts (for all types)
-        const dateConflictErrors = checkDateConflict(formData, hours, editingHour?.hours_of_operation_id);
-        if (dateConflictErrors.length > 0) {
-            errors.date_conflict = dateConflictErrors.join(', ');
+        // Check for conflicts
+        const detectedConflicts = detectConflicts(formData, hours, editingHour?.hours_of_operation_id);
+        if (detectedConflicts.length > 0) {
+            errors.conflicts = detectedConflicts;
         }
 
         return errors;
     };
 
-    // Format backend errors
-    const formatBackendErrors = (errorData) => {
-        const formattedErrors = {};
-        Object.keys(errorData).forEach(field => {
-            if (Array.isArray(errorData[field])) {
-                formattedErrors[field] = errorData[field].join(', ');
-            } else {
-                formattedErrors[field] = errorData[field];
-            }
-        });
-        return formattedErrors;
+    // Recheck conflicts after edits or deletions
+    const recheckConflicts = () => {
+        if (!pendingSubmission) return [];
+        
+        const { formData, editingHour } = pendingSubmission;
+        return detectConflicts(formData, hours, editingHour?.hours_of_operation_id);
     };
 
-    // Submit form
+    // Enhanced conflict resolution handler
+    const handleConflictResolution = async (action, conflictHour = null) => {
+        if (action === 'proceed') {
+            // User wants to proceed despite conflicts
+            setShowConflictPopup(false);
+            setConflictResolved(false);
+            await submitForm(pendingSubmission);
+        } else if (action === 'edit' && conflictHour) {
+            // User wants to edit the conflicting hour
+            setShowConflictPopup(false);
+            setConflictResolved(false);
+            handleEdit(conflictHour);
+        } else if (action === 'delete' && conflictHour) {
+            // User wants to delete the conflicting hour
+            await handleDelete(conflictHour.hours_of_operation_id);
+            
+            // After deletion, recheck conflicts
+            const remainingConflicts = recheckConflicts();
+            if (remainingConflicts.length === 0) {
+                setConflictResolved(true);
+                setConflicts([]);
+            } else {
+                setConflicts(remainingConflicts);
+                setConflictResolved(false);
+            }
+        } else if (action === 'close') {
+            // User manually closes the popup
+            setShowConflictPopup(false);
+            setPendingSubmission(null);
+            setConflicts([]);
+            setConflictResolved(false);
+        } else {
+            // User canceled
+            setShowConflictPopup(false);
+            setPendingSubmission(null);
+            setConflicts([]);
+            setConflictResolved(false);
+        }
+    };
+
+    // Enhanced submit handler with conflict checking
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        const validationErrors = validateForm();
-        if (Object.keys(validationErrors).length > 0) {
-            setFieldErrors(validationErrors);
+        const validationErrors = validateFormWithConflicts();
+        const fieldValidationErrors = { ...validationErrors };
+        delete fieldValidationErrors.conflicts;
+
+        if (Object.keys(fieldValidationErrors).length > 0) {
+            setFieldErrors(fieldValidationErrors);
             return;
         }
 
+        // Check if there are conflicts
+        if (validationErrors.conflicts && validationErrors.conflicts.length > 0) {
+            setConflicts(validationErrors.conflicts);
+            setPendingSubmission({ formData, editingHour });
+            setShowConflictPopup(true);
+            setConflictResolved(false);
+            return;
+        }
+
+        // No conflicts, proceed with submission
+        await submitForm({ formData, editingHour });
+    };
+
+    // Separate form submission logic
+    const submitForm = async (submissionData) => {
+        if (!submissionData) return;
+
+        const { formData, editingHour } = submissionData;
         setIsLoading(true);
         setError('');
         setSuccess('');
@@ -562,7 +313,7 @@ const HoursOfOperation = () => {
             // Prepare data based on hours type
             const submitData = { ...formData };
 
-            // Set defaults for closed type - set time to null
+            // Set defaults for closed type
             if (formData.hours_type === 'closed') {
                 submitData.start_time = "00:00:00";
                 submitData.end_time = "00:00:00";
@@ -577,7 +328,7 @@ const HoursOfOperation = () => {
                 submitData.ages_allowed = '';
             }
 
-            // Normalize dates to YYYY-MM-DD
+            // Normalize dates
             if (submitData.starting_date) {
                 submitData.starting_date = submitData.starting_date.split('T')[0];
             }
@@ -585,7 +336,7 @@ const HoursOfOperation = () => {
                 submitData.ending_date = submitData.ending_date.split('T')[0];
             }
 
-            // Convert empty strings to null to avoid backend validation errors
+            // Convert empty strings to null
             Object.keys(submitData).forEach(key => {
                 if (submitData[key] === '') submitData[key] = null;
             });
@@ -607,7 +358,6 @@ const HoursOfOperation = () => {
             const responseData = await response.json();
 
             if (!response.ok) {
-                // Handle backend validation errors
                 if (response.status === 400) {
                     const backendErrors = formatBackendErrors(responseData);
                     setFieldErrors(backendErrors);
@@ -637,7 +387,92 @@ const HoursOfOperation = () => {
             setError(err.message);
         } finally {
             setIsLoading(false);
+            setPendingSubmission(null);
         }
+    };
+
+    // Get auth token
+    const getAuthToken = () => {
+        return localStorage.getItem('accessToken') || userData?.token;
+    };
+
+    // Format backend errors
+    const formatBackendErrors = (errorData) => {
+        const formattedErrors = {};
+        Object.keys(errorData).forEach(field => {
+            if (Array.isArray(errorData[field])) {
+                formattedErrors[field] = errorData[field].join(', ');
+            } else {
+                formattedErrors[field] = errorData[field];
+            }
+        });
+        return formattedErrors;
+    };
+
+    // Format time for display
+    const formatTime = (time) => {
+        if (!time) return 'N/A';
+        return new Date(`2000-01-01T${time}`).toLocaleTimeString('en-US', {
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+        });
+    };
+
+    // Format schedule_with for display
+    const formatScheduleWith = (schedule) => {
+        if (!schedule) return 'N/A';
+        return schedule.split('_').map(word =>
+            word.charAt(0).toUpperCase() + word.slice(1)
+        ).join(' ');
+    };
+
+    // Get type color classes
+    const getTypeColorClasses = (type) => {
+        const typeConfig = HOURS_TYPES.find(t => t.value === type);
+        const color = typeConfig ? typeConfig.color : 'gray';
+        return COLOR_CLASSES[color] || COLOR_CLASSES.gray;
+    };
+
+    // Dynamic field requirements based on hours type
+    const getRequiredFields = (hoursType) => {
+        switch (hoursType) {
+            case 'regular':
+                return ['starting_day_name', 'start_time', 'end_time', 'schedule_with', 'ages_allowed'];
+            case 'special':
+                return ['starting_day_name', 'start_time', 'end_time', 'starting_date', 'schedule_with', 'ages_allowed'];
+            case 'early_closing':
+            case 'late_closing':
+                return ['starting_day_name', 'end_time', 'starting_date', 'reason'];
+            case 'early_opening':
+            case 'late_opening':
+                return ['starting_day_name', 'start_time', 'starting_date', 'reason'];
+            case 'closed':
+                return ['starting_date', 'reason'];
+            default:
+                return ['starting_day_name', 'start_time', 'end_time'];
+        }
+    };
+
+    // Reset form
+    const resetForm = () => {
+        setFormData({
+            hours_type: 'regular',
+            schedule_with: '',
+            ages_allowed: '',
+            starting_date: '',
+            ending_date: '',
+            starting_day_name: '',
+            ending_day_name: '',
+            start_time: '',
+            end_time: '',
+            reason: '',
+            is_modified: false
+        });
+        setEditingHour(null);
+        setError('');
+        setSuccess('');
+        setFieldErrors({});
     };
 
     // Edit hour
@@ -693,32 +528,121 @@ const HoursOfOperation = () => {
         }
     };
 
-    // Get type color classes
-    const getTypeColorClasses = (type) => {
-        const typeConfig = HOURS_TYPES.find(t => t.value === type);
-        const color = typeConfig ? typeConfig.color : 'gray';
-        return COLOR_CLASSES[color] || COLOR_CLASSES.gray;
+    // Fetch location details
+    const fetchLocation = async () => {
+        try {
+            const token = getAuthToken();
+            const response = await fetch(`${import.meta.env.VITE_BackendApi}/locations/${location_id}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                setLocation(data);
+            }
+        } catch (err) {
+            console.error('Failed to fetch location:', err);
+        }
     };
 
-    // Format time for display
-    const formatTime = (time) => {
-        if (!time) return 'N/A';
-        return new Date(`2000-01-01T${time}`).toLocaleTimeString('en-US', {
-            hour: 'numeric',
-            minute: '2-digit',
-            hour12: true
-        });
+    // Fetch hours of operation
+    const fetchHours = async () => {
+        if (!location_id) return;
+
+        setIsLoading(true);
+        setError('');
+        try {
+            const token = getAuthToken();
+            const response = await fetch(`${import.meta.env.VITE_BackendApi}/hours/${location_id}/`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch hours of operation');
+            }
+
+            const data = await response.json();
+            setHours(data);
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setIsLoading(false);
+        }
     };
 
-    // Format schedule_with for display
-    const formatScheduleWith = (schedule) => {
-        if (!schedule) return 'N/A';
-        return schedule.split('_').map(word =>
-            word.charAt(0).toUpperCase() + word.slice(1)
-        ).join(' ');
+    // Handle form input changes
+    const handleInputChange = (e) => {
+        const { name, value, type, checked } = e.target;
+
+        if (name === 'starting_date' && value) {
+            const dayName = getDayNameFromDate(value);
+            setFormData(prev => ({
+                ...prev,
+                [name]: value,
+                starting_day_name: dayName
+            }));
+        } else if (name === 'ending_date' && value) {
+            const dayName = getDayNameFromDate(value);
+            setFormData(prev => ({
+                ...prev,
+                [name]: value,
+                ending_day_name: dayName
+            }));
+        }
+        else if (name === 'hours_type' && value === 'closed') {
+            setFormData(prev => ({
+                ...prev,
+                [name]: value,
+                start_time: '',
+                end_time: '',
+                schedule_with: '',
+                ages_allowed: ''
+            }));
+        }
+        else if (name === 'hours_type' && (value === 'early_closing' || value === 'late_closing' || value === 'early_opening' || value === 'late_opening')) {
+            setFormData(prev => ({
+                ...prev,
+                [name]: value,
+                schedule_with: '',
+                ages_allowed: ''
+            }));
+        } else {
+            setFormData(prev => ({
+                ...prev,
+                [name]: type === 'checkbox' ? checked : value
+            }));
+        }
+
+        if (fieldErrors[name]) {
+            setFieldErrors(prev => ({
+                ...prev,
+                [name]: ''
+            }));
+        }
     };
 
-    // Group hours by type for better organization in specific order
+    // Handle returning from edit form back to conflict popup
+    useEffect(() => {
+        if (!isFormOpen && pendingSubmission && !conflictResolved) {
+            // User finished editing, recheck conflicts
+            const remainingConflicts = recheckConflicts();
+            if (remainingConflicts.length === 0) {
+                setConflictResolved(true);
+                setConflicts([]);
+            } else {
+                setConflicts(remainingConflicts);
+            }
+            setShowConflictPopup(true);
+        }
+    }, [isFormOpen, pendingSubmission]);
+
+    // Group hours by type for better organization
     const groupedHours = hours.reduce((acc, hour) => {
         if (!acc[hour.hours_type]) {
             acc[hour.hours_type] = [];
@@ -774,7 +698,152 @@ const HoursOfOperation = () => {
                 </div>
             )}
 
-            {/* Hours Display - Grouped by Type in specific order */}
+            {/* Enhanced Conflict Resolution Popup with Glass Effect */}
+            {showConflictPopup && (
+                <div className="fixed inset-0 bg-white bg-opacity-90 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                    <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+                        <div className="p-8">
+                            <div className="flex justify-between items-center mb-6">
+                                <h3 className="text-2xl font-bold text-red-600">Schedule Conflict Detected</h3>
+                                <button
+                                    onClick={() => handleConflictResolution('close')}
+                                    className="text-gray-500 hover:text-gray-700 transition-colors text-2xl"
+                                >
+                                    ✕
+                                </button>
+                            </div>
+                            
+                            {/* Conflict Resolved Success Message */}
+                            {conflictResolved && (
+                                <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+                                    <div className="flex items-center">
+                                        <div className="text-green-500 text-xl mr-3">✓</div>
+                                        <div>
+                                            <h4 className="font-semibold text-green-800">Conflict Resolved!</h4>
+                                            <p className="text-green-700 text-sm">
+                                                The conflict has been resolved. You can now submit your form.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="mb-6">
+                                <p className="text-gray-700 mb-4 text-lg">
+                                    The hours you're trying to create conflict with existing schedule entries. 
+                                    Please resolve the conflicts below to continue.
+                                </p>
+                                
+                                <div className="bg-blue-50 border border-blue-200 rounded-xl p-5 mb-6">
+                                    <h4 className="font-semibold text-blue-800 mb-3 text-lg">New Schedule Entry:</h4>
+                                    <div className="text-sm text-blue-700 space-y-2">
+                                        <p><strong>Type:</strong> {HOURS_TYPES.find(t => t.value === pendingSubmission?.formData.hours_type)?.label}</p>
+                                        <p><strong>Date:</strong> {pendingSubmission?.formData.starting_date ? new Date(pendingSubmission.formData.starting_date).toLocaleDateString() : 'N/A'}</p>
+                                        {pendingSubmission?.formData.start_time && (
+                                            <p><strong>Time:</strong> {formatTime(pendingSubmission.formData.start_time)} - {formatTime(pendingSubmission.formData.end_time)}</p>
+                                        )}
+                                        {pendingSubmission?.formData.reason && (
+                                            <p><strong>Reason:</strong> {pendingSubmission.formData.reason}</p>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {conflicts.length > 0 && (
+                                    <div className="space-y-4">
+                                        <h4 className="font-semibold text-gray-900 text-lg">Conflicting Entries:</h4>
+                                        {conflicts.map((conflict, index) => {
+                                            const hour = conflict.conflictingHour;
+                                            const colorClasses = getTypeColorClasses(hour.hours_type);
+                                            return (
+                                                <div key={index} className="border border-gray-300 rounded-xl p-5 bg-white shadow-sm">
+                                                    <div className="flex justify-between items-start mb-4">
+                                                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${colorClasses.bg} ${colorClasses.text}`}>
+                                                            {HOURS_TYPES.find(t => t.value === hour.hours_type)?.label}
+                                                        </span>
+                                                        <span className={`text-sm font-medium px-3 py-1 rounded-full ${
+                                                            conflict.severity === 'high' ? 'bg-red-100 text-red-800' : 'bg-orange-100 text-orange-800'
+                                                        }`}>
+                                                            {conflict.severity === 'high' ? 'High Priority' : 'Medium Priority'}
+                                                        </span>
+                                                    </div>
+                                                    
+                                                    <p className="text-red-600 mb-4 font-medium">{conflict.message}</p>
+                                                    
+                                                    <div className="text-sm text-gray-600 space-y-2 mb-4">
+                                                        <div className="flex justify-between">
+                                                            <span className="text-gray-500">Date:</span>
+                                                            <span className="font-medium">
+                                                                {hour.starting_date ? new Date(hour.starting_date).toLocaleDateString() : 'N/A'}
+                                                                {hour.ending_date && ` to ${new Date(hour.ending_date).toLocaleDateString()}`}
+                                                            </span>
+                                                        </div>
+                                                        {hour.start_time && (
+                                                            <div className="flex justify-between">
+                                                                <span className="text-gray-500">Time:</span>
+                                                                <span className="font-medium">
+                                                                    {formatTime(hour.start_time)} - {formatTime(hour.end_time)}
+                                                                </span>
+                                                            </div>
+                                                        )}
+                                                        {hour.reason && (
+                                                            <div className="flex justify-between">
+                                                                <span className="text-gray-500">Reason:</span>
+                                                                <span className="font-medium text-right">{hour.reason}</span>
+                                                            </div>
+                                                        )}
+                                                        {hour.schedule_with && hour.schedule_with !== 'closed' && hour.schedule_with !== '' && (
+                                                            <div className="flex justify-between">
+                                                                <span className="text-gray-500">Schedule With:</span>
+                                                                <span className="font-medium">{formatScheduleWith(hour.schedule_with)}</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    
+                                                    <div className="flex space-x-3">
+                                                        <button
+                                                            onClick={() => handleConflictResolution('edit', hour)}
+                                                            className="flex-1 bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center justify-center space-x-2"
+                                                        >
+                                                            <span>✏️</span>
+                                                            <span>Edit This Entry</span>
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleConflictResolution('delete', hour)}
+                                                            className="flex-1 bg-red-600 text-white py-3 px-4 rounded-lg hover:bg-red-700 transition-colors font-medium flex items-center justify-center space-x-2"
+                                                        >
+                                                            <span>🗑️</span>
+                                                            <span>Delete This Entry</span>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                            
+                            <div className="flex justify-between items-center pt-6 border-t border-gray-200">
+                                <button
+                                    onClick={() => handleConflictResolution('close')}
+                                    className="px-6 py-3 text-base font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                                >
+                                    Close
+                                </button>
+                                <div className="flex space-x-4">
+                                    <button
+                                        onClick={() => handleConflictResolution('proceed')}
+                                        className="px-6 py-3 text-base font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors"
+                                    >
+                                        Proceed Anyway
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Hours Display */}
             {!isFormOpen && location_id && (
                 <div className="space-y-6">
                     {DISPLAY_ORDER.map(type => {
@@ -826,7 +895,6 @@ const HoursOfOperation = () => {
                                                                 {hour.ending_day_name && ` - ${hour.ending_day_name}`}
                                                             </span>
                                                         </div>
-                                                        {/* Don't show time for closed type */}
                                                         {hour.hours_type !== 'closed' && (
                                                             <div className="flex justify-between">
                                                                 <span className="text-gray-600">Time:</span>
@@ -957,7 +1025,7 @@ const HoursOfOperation = () => {
                                 </div>
                             </div>
 
-                            {/* For regular hours, show day selection (not auto-filled from dates) */}
+                            {/* For regular hours, show day selection */}
                             {formData.hours_type === 'regular' && (
                                 <>
                                     <div>
@@ -1204,40 +1272,6 @@ const HoursOfOperation = () => {
                                     <p className="mt-1 text-sm text-red-600">{fieldErrors.reason}</p>
                                 )}
                             </div>
-
-                            {/* Time Overlap Error */}
-                            {fieldErrors.time_overlap && (
-                                <div className="md:col-span-2">
-                                    <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
-                                        <strong>Time Slot Conflict:</strong> {fieldErrors.time_overlap}
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Date Conflict Error */}
-                            {fieldErrors.date_conflict && (
-                                <div className="md:col-span-2">
-                                    <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
-                                        <strong>Date Conflict:</strong> {fieldErrors.date_conflict}
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Modified Flag - Only show for editing */}
-                            {editingHour && (
-                                <div className="md:col-span-2 flex items-center">
-                                    <input
-                                        type="checkbox"
-                                        name="is_modified"
-                                        checked={formData.is_modified}
-                                        onChange={handleInputChange}
-                                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                                    />
-                                    <label className="ml-2 block text-sm text-gray-700">
-                                        Mark as modified schedule
-                                    </label>
-                                </div>
-                            )}
                         </div>
 
                         {/* Form Actions */}
@@ -1276,5 +1310,3 @@ const HoursOfOperation = () => {
 };
 
 export default HoursOfOperation;
-
-

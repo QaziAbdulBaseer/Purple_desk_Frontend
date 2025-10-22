@@ -19,7 +19,7 @@ const JumpPass = () => {
 
     const renderContent = () => {
         switch (activeSection) {
-            case 'Hours of Operation':
+            case 'Jump Pass':
                 return (
                     <div> 
                         <JumpPassComp />
