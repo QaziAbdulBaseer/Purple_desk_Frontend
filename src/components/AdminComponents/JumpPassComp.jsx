@@ -672,7 +672,7 @@ const JumpPassComp = () => {
 
             {!isFormOpen && location_id && (
                 <div className="space-y-4">
-                    {jumpPasses
+                    {jumpPasses 
                         .sort((a, b) => a.jump_pass_priority - b.jump_pass_priority)
                         .map((pass) => {
                             const isTaxIncluded = pass.tax_included;
