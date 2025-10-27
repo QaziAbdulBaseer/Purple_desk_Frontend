@@ -1,3 +1,6 @@
+// still the model problem is not solved
+// Model will not return when and also not update after deleate any conflict
+
 
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
@@ -284,81 +287,7 @@ const checkDayOverlap = (hour1, hour2) => {
     return overlap;
 };
 
-    // Check time conflicts between two hours
-    // const checkTimeConflict = (hour1, hour2) => {
-    //     // For regular hours, always check time conflicts
-    //     if (hour1.hours_type === 'regular' && hour2.hours_type === 'regular') {
-    //         if (!hour1.start_time || !hour1.end_time || !hour2.start_time || !hour2.end_time) {
-    //             return null;
-    //         }
-    //     }
 
-    //     // For special vs closing/opening types, handle partial times
-    //     if ((hour1.hours_type === 'special' && 
-    //          ['early_closing', 'late_closing', 'early_opening', 'late_opening'].includes(hour2.hours_type)) ||
-    //         (hour2.hours_type === 'special' && 
-    //          ['early_closing', 'late_closing', 'early_opening', 'late_opening'].includes(hour1.hours_type))) {
-
-    //         const specialHour = hour1.hours_type === 'special' ? hour1 : hour2;
-    //         const otherHour = hour1.hours_type !== 'special' ? hour1 : hour2;
-
-    //         if (!specialHour.start_time || !specialHour.end_time) return null;
-
-    //         const timeToMinutes = (timeStr) => {
-    //             if (!timeStr) return null;
-    //             const [hours, minutes] = timeStr.split(':').map(Number);
-    //             return hours * 60 + minutes;
-    //         };
-
-    //         const specialStart = timeToMinutes(specialHour.start_time);
-    //         const specialEnd = timeToMinutes(specialHour.end_time);
-
-    //         // Handle early_closing and late_closing (only have end_time)
-    //         if (otherHour.hours_type === 'early_closing' || otherHour.hours_type === 'late_closing') {
-    //             if (!otherHour.end_time) return null;
-    //             const closingTime = timeToMinutes(otherHour.end_time);
-
-    //             if (closingTime >= specialStart && closingTime <= specialEnd) {
-    //                 return `Closing time at ${formatTime(otherHour.end_time)} conflicts with special hours ${formatTime(specialHour.start_time)} - ${formatTime(specialHour.end_time)}`;
-    //             }
-    //         }
-
-    //         // Handle early_opening and late_opening (only have start_time)
-    //         if (otherHour.hours_type === 'early_opening' || otherHour.hours_type === 'late_opening') {
-    //             if (!otherHour.start_time) return null;
-    //             const openingTime = timeToMinutes(otherHour.start_time);
-
-    //             if (openingTime >= specialStart && openingTime <= specialEnd) {
-    //                 return `Opening time at ${formatTime(otherHour.start_time)} conflicts with special hours ${formatTime(specialHour.start_time)} - ${formatTime(specialHour.end_time)}`;
-    //             }
-    //         }
-
-    //         return null;
-    //     }
-
-    //     // Standard time conflict check for hours with both start and end times
-    //     if (!hour1.start_time || !hour1.end_time || !hour2.start_time || !hour2.end_time) {
-    //         return null;
-    //     }
-
-    //     const timeToMinutes = (timeStr) => {
-    //         const [hours, minutes] = timeStr.split(':').map(Number);
-    //         return hours * 60 + minutes;
-    //     };
-
-    //     const start1 = timeToMinutes(hour1.start_time);
-    //     const end1 = timeToMinutes(hour1.end_time);
-    //     const start2 = timeToMinutes(hour2.start_time);
-    //     const end2 = timeToMinutes(hour2.end_time);
-
-    //     if ((start1 >= start2 && start1 < end2) ||
-    //         (end1 > start2 && end1 <= end2) ||
-    //         (start1 <= start2 && end1 >= end2)) {
-    //         return `Time overlap: ${formatTime(hour2.start_time)} - ${formatTime(hour2.end_time)}`;
-    //     }
-
-    //     return null;
-    // };
 
     const checkTimeConflict = (hour1, hour2) => {
         // For regular hours, always check time conflicts
@@ -848,6 +777,7 @@ const checkDayOverlap = (hour1, hour2) => {
 
             if (response.ok) {
                 const data = await response.json();
+                console.log("This is the location data = " , data)
                 setLocation(data);
             }
         } catch (err) {
@@ -875,6 +805,7 @@ const checkDayOverlap = (hour1, hour2) => {
             }
 
             const data = await response.json();
+            console.log("This is the hours of operation data = " , data)
             setHours(data);
         } catch (err) {
             setError(err.message);

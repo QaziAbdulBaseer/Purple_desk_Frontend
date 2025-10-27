@@ -15,7 +15,7 @@ const JumpPassComp = () => {
     const [editingPass, setEditingPass] = useState(null);
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [fieldErrors, setFieldErrors] = useState({});
-    
+
     const [hoursOfOperation, setHoursOfOperation] = useState([]);
     const [conflicts, setConflicts] = useState([]);
     const [showConflictPopup, setShowConflictPopup] = useState(false);
@@ -23,22 +23,23 @@ const JumpPassComp = () => {
 
     const [formData, setFormData] = useState({
         jump_pass_priority: '',
-        schedule_with: '',
+        schedule_with: [],
         pass_name: '',
         age_allowed: '',
         jump_time_allowed: '',
         price: '',
         tax_included: 'no',
-        tax_percentage: '',
         recommendation: '',
         jump_pass_pitch: '',
         starting_day_name: '',
         ending_day_name: '',
-        comments: ''
+        comments: '',
+        can_custom_take_part_in_multiple: 'no'
     });
 
     const [isCustomJumpTime, setIsCustomJumpTime] = useState(false);
     const [customJumpTime, setCustomJumpTime] = useState('');
+    const [priorityOptions, setPriorityOptions] = useState([]);
 
     const JUMP_TIME_OPTIONS = [
         { value: '30 minutes', label: '30 mins' },
@@ -46,21 +47,52 @@ const JumpPassComp = () => {
         { value: '90 minutes', label: '90 mins' },
         { value: '120 minutes', label: '120 mins' },
         { value: '150 minutes', label: '150 mins' },
-        { value: '180 minutes', label: '180 mins' }
+        { value: '180 minutes', label: '180 mins' },
+        { value: 'all day', label: 'All Day' }
     ];
 
     const SCHEDULE_WITH = ['little_leaper', 'open_jump', 'sensory_hour', 'glow'];
-    const AGES_ALLOWED = ['All Ages', '4+', '3+', '5+', 'Family Only', 'Adults Only'];
+    const YES_NO_OPTIONS = ['yes', 'no'];
     const DAYS_OF_WEEK = [
         'Monday', 'Tuesday', 'Wednesday', 'Thursday',
         'Friday', 'Saturday', 'Sunday'
     ];
 
-    const YES_NO_OPTIONS = ['yes', 'no'];
-
     const getAuthToken = () => {
         return localStorage.getItem('accessToken') || userData?.token;
     };
+
+
+    // UPDATED: Generate priority options - always include 999 (Do not pitch)
+    const generatePriorityOptions = (existingPasses) => {
+        if (!existingPasses || existingPasses.length === 0) {
+            // When no passes exist, show default priorities 1-4 AND always include 999
+            return [1, 2, 3, 4, 999];
+        }
+
+        const existingPriorities = existingPasses
+            .map(pass => pass.jump_pass_priority)
+            .filter(priority => priority !== 999)
+            .sort((a, b) => a - b);
+
+        // Get all used priorities
+        const usedPriorities = new Set(existingPriorities);
+
+        // Find available priorities from 1 to 20
+        const availableOptions = [];
+        for (let i = 1; i <= 20; i++) {
+            if (!usedPriorities.has(i)) {
+                availableOptions.push(i);
+            }
+        }
+
+        // Take first 4 available options
+        const topAvailable = availableOptions.slice(0, 4);
+
+        // ALWAYS include 999 (Do not pitch) - regardless of whether there are other passes
+        return [...topAvailable, 999];
+    };
+
 
     const handleJumpTimeSelect = (value) => {
         if (value === 'custom') {
@@ -91,6 +123,50 @@ const JumpPassComp = () => {
                 ...prev,
                 jump_time_allowed: ''
             }));
+        }
+    };
+
+    const handleScheduleWithChange = (e) => {
+        const { value, checked } = e.target;
+        setFormData(prev => {
+            const currentSelection = Array.isArray(prev.schedule_with) ? prev.schedule_with : [];
+
+            if (checked) {
+                return {
+                    ...prev,
+                    schedule_with: [...currentSelection, value]
+                };
+            } else {
+                return {
+                    ...prev,
+                    schedule_with: currentSelection.filter(item => item !== value)
+                };
+            }
+        });
+
+        if (fieldErrors.schedule_with) {
+            setFieldErrors(prev => ({
+                ...prev,
+                schedule_with: ''
+            }));
+        }
+    };
+
+    const handleAgeAllowedChange = (e) => {
+        const value = e.target.value;
+        // Only allow letters and spaces, no numbers
+        if (/^[a-zA-Z\s]*$/.test(value)) {
+            setFormData(prev => ({
+                ...prev,
+                age_allowed: value
+            }));
+
+            if (fieldErrors.age_allowed) {
+                setFieldErrors(prev => ({
+                    ...prev,
+                    age_allowed: ''
+                }));
+            }
         }
     };
 
@@ -133,6 +209,10 @@ const JumpPassComp = () => {
 
             const data = await response.json();
             setJumpPasses(data);
+
+            // Generate priority options after fetching jump passes
+            const options = generatePriorityOptions(data);
+            setPriorityOptions(options);
         } catch (err) {
             setError(err.message);
         } finally {
@@ -169,13 +249,14 @@ const JumpPassComp = () => {
 
     const parseJumpTimeToMinutes = (jumpTime) => {
         if (!jumpTime) return 0;
-        
+        if (jumpTime.toLowerCase() === 'all day') return 24 * 60; // 24 hours in minutes
+
         const timeStr = jumpTime.toLowerCase().trim();
         const numbers = timeStr.match(/\d+(\.\d+)?/g);
         if (!numbers || numbers.length === 0) return 0;
-        
+
         const value = parseFloat(numbers[0]);
-        
+
         if (timeStr.includes('hour')) {
             return Math.round(value * 60);
         } else if (timeStr.includes('min')) {
@@ -190,13 +271,20 @@ const JumpPassComp = () => {
     };
 
     const getDaysInRange = (startDay, endDay) => {
+        if (!startDay) return [];
+
+        // If no end day specified, return only the start day
+        if (!endDay) {
+            return [startDay];
+        }
+
         const startIndex = getDayIndex(startDay);
-        let endIndex = getDayIndex(endDay || startDay);
-        
+        let endIndex = getDayIndex(endDay);
+
         if (endIndex < startIndex) {
             endIndex += 7;
         }
-        
+
         const days = [];
         for (let i = startIndex; i <= endIndex; i++) {
             days.push(DAYS_OF_WEEK[i % 7]);
@@ -204,50 +292,153 @@ const JumpPassComp = () => {
         return days;
     };
 
+    // NEW: Helper function to check if day is in range
+    const isDayInRange = (day, startDay, endDay) => {
+        if (!startDay) return false;
+
+        // If no end day, only check if it matches start day
+        if (!endDay) {
+            return day === startDay;
+        }
+
+        const dayIndex = getDayIndex(day);
+        const startIndex = getDayIndex(startDay);
+        let endIndex = getDayIndex(endDay);
+
+        // Handle week wrap-around if end is before start
+        if (endIndex < startIndex) {
+            endIndex += 7;
+        }
+
+        // Check if day is in range (considering potential wrap-around)
+        return (dayIndex >= startIndex && dayIndex <= endIndex) ||
+            (dayIndex + 7 >= startIndex && dayIndex + 7 <= endIndex);
+    };
+
+    // COMPLETELY REWRITTEN CONFLICT DETECTION - FIXED FOR MULTIPLE SCHEDULES
     const detectConflicts = (newPass, existingHours) => {
         const conflicts = [];
-        
-        if (!newPass.schedule_with || !newPass.starting_day_name) {
+
+        if (!newPass.schedule_with || newPass.schedule_with.length === 0 || !newPass.starting_day_name) {
             return conflicts;
         }
 
         const daysInRange = getDaysInRange(newPass.starting_day_name, newPass.ending_day_name);
         const jumpTimeMinutes = parseJumpTimeToMinutes(newPass.jump_time_allowed);
+        const isAllDay = newPass.jump_time_allowed.toLowerCase() === 'all day';
 
+        // For each day in range, check if AT LEAST ONE schedule is available
         daysInRange.forEach(day => {
-            const dayHours = existingHours.filter(hour => 
-                hour.hours_type === 'regular' && 
-                hour.schedule_with === newPass.schedule_with &&
-                hour.starting_day_name === day
-            );
+            const dayConflicts = [];
+            let hasAtLeastOneAvailableSchedule = false;
 
-            if (dayHours.length === 0) {
-                conflicts.push({
-                    type: 'SCHEDULE_NOT_AVAILABLE',
-                    message: `${formatScheduleWith(newPass.schedule_with)} is not available on ${day}`,
-                    day: day,
-                    severity: 'high'
-                });
-            } else {
-                dayHours.forEach(hour => {
-                    const availableMinutes = timeToMinutes(hour.end_time) - timeToMinutes(hour.start_time);
-                    
-                    if (jumpTimeMinutes > availableMinutes) {
-                        conflicts.push({
+            newPass.schedule_with.forEach(schedule => {
+                let hasAvailableHours = false;
+                let maxAvailableMinutes = 0;
+                let availableTime = '';
+
+                // Check for special hours on this specific day
+                const specialHours = existingHours.filter(hour =>
+                    hour.hours_type === 'special' &&
+                    hour.schedule_with === schedule &&
+                    getDayNameFromDate(hour.starting_date) === day
+                );
+
+                // Check for regular hours
+                const regularHours = existingHours.filter(hour =>
+                    hour.hours_type === 'regular' &&
+                    hour.schedule_with === schedule &&
+                    isDayInRange(day, hour.starting_day_name, hour.ending_day_name)
+                );
+
+                // Check special hours first
+                if (specialHours.length > 0) {
+                    hasAvailableHours = true;
+                    specialHours.forEach(hour => {
+                        const mins = timeToMinutes(hour.end_time) - timeToMinutes(hour.start_time);
+                        if (mins > maxAvailableMinutes) {
+                            maxAvailableMinutes = mins;
+                            availableTime = `${formatTime(hour.start_time)} - ${formatTime(hour.end_time)}`;
+                        }
+                    });
+                }
+                // Then check regular hours
+                else if (regularHours.length > 0) {
+                    hasAvailableHours = true;
+                    regularHours.forEach(hour => {
+                        const mins = timeToMinutes(hour.end_time) - timeToMinutes(hour.start_time);
+                        if (mins > maxAvailableMinutes) {
+                            maxAvailableMinutes = mins;
+                            availableTime = `${formatTime(hour.start_time)} - ${formatTime(hour.end_time)}`;
+                        }
+                    });
+                }
+
+                // If this schedule has available hours and sufficient time, mark day as available
+                if (hasAvailableHours) {
+                    if (isAllDay) {
+                        hasAtLeastOneAvailableSchedule = true;
+                    } else if (jumpTimeMinutes <= maxAvailableMinutes) {
+                        hasAtLeastOneAvailableSchedule = true;
+                    } else {
+                        // Schedule has hours but not enough time
+                        dayConflicts.push({
                             type: 'TIME_EXCEEDS_AVAILABILITY',
-                            message: `Jump time (${newPass.jump_time_allowed}) exceeds available time for ${formatScheduleWith(newPass.schedule_with)} on ${day}`,
+                            message: `Jump time (${newPass.jump_time_allowed}) exceeds available time for ${formatScheduleWith(schedule)} on ${day}`,
                             day: day,
-                            availableTime: `${formatTime(hour.start_time)} - ${formatTime(hour.end_time)}`,
-                            availableMinutes: availableMinutes,
+                            schedule: schedule,
+                            availableTime: availableTime,
+                            availableMinutes: maxAvailableMinutes,
                             requestedMinutes: jumpTimeMinutes,
-                            severity: 'high'
+                            severity: 'high',
+                            hourType: specialHours.length > 0 ? 'special' : 'regular'
                         });
                     }
-                });
+                } else {
+                    // Schedule has no hours at all for this day
+                    dayConflicts.push({
+                        type: 'SCHEDULE_NOT_AVAILABLE',
+                        message: `${formatScheduleWith(schedule)} is not available on ${day}`,
+                        day: day,
+                        schedule: schedule,
+                        severity: 'high'
+                    });
+                }
+            });
+
+            // Only add conflicts if NO schedule is available for this day
+            // OR if all schedules have time conflicts (but at least one has hours)
+            if (!hasAtLeastOneAvailableSchedule && dayConflicts.length > 0) {
+                conflicts.push(...dayConflicts);
             }
         });
 
         return conflicts;
+    };
+
+    const getDayNameFromDate = (dateString) => {
+        if (!dateString) return '';
+        try {
+            // Handle different date string formats
+            let date;
+            if (dateString.includes('T')) {
+                date = new Date(dateString);
+            } else {
+                // If it's just a date string without time
+                date = new Date(dateString + 'T00:00:00');
+            }
+
+            if (isNaN(date.getTime())) {
+                console.error('Invalid date:', dateString);
+                return '';
+            }
+
+            const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+            return days[date.getDay()];
+        } catch (err) {
+            console.error('Error parsing date:', dateString, err);
+            return '';
+        }
     };
 
     const formatTime = (time) => {
@@ -261,19 +452,11 @@ const JumpPassComp = () => {
 
     const handleInputChange = (e) => {
         const { name, value, type } = e.target;
-        
-        if (name === 'tax_included' && value === 'no') {
-            setFormData(prev => ({
-                ...prev,
-                [name]: value,
-                tax_percentage: ''
-            }));
-        } else {
-            setFormData(prev => ({
-                ...prev,
-                [name]: type === 'number' ? (value === '' ? '' : parseFloat(value)) : value
-            }));
-        }
+
+        setFormData(prev => ({
+            ...prev,
+            [name]: type === 'number' ? (value === '' ? '' : parseFloat(value)) : value
+        }));
 
         if (fieldErrors[name]) {
             setFieldErrors(prev => ({
@@ -286,18 +469,18 @@ const JumpPassComp = () => {
     const resetForm = () => {
         setFormData({
             jump_pass_priority: '',
-            schedule_with: '',
+            schedule_with: [],
             pass_name: '',
             age_allowed: '',
             jump_time_allowed: '',
             price: '',
             tax_included: 'no',
-            tax_percentage: '',
             recommendation: '',
             jump_pass_pitch: '',
             starting_day_name: '',
             ending_day_name: '',
-            comments: ''
+            comments: '',
+            can_custom_take_part_in_multiple: 'no'
         });
         setEditingPass(null);
         setIsCustomJumpTime(false);
@@ -310,12 +493,11 @@ const JumpPassComp = () => {
     const validateFormWithConflicts = () => {
         const errors = {};
         const requiredFields = [
-            'jump_pass_priority', 
-            'schedule_with', 
-            'pass_name', 
-            'age_allowed', 
-            'jump_time_allowed', 
-            'price', 
+            'jump_pass_priority',
+            'pass_name',
+            'age_allowed',
+            'jump_time_allowed',
+            'price',
             'recommendation'
         ];
 
@@ -325,6 +507,11 @@ const JumpPassComp = () => {
             }
         });
 
+        // Validate schedule_with has at least one selection
+        if (!formData.schedule_with || formData.schedule_with.length === 0) {
+            errors.schedule_with = 'At least one schedule type must be selected';
+        }
+
         if (formData.jump_pass_priority && (formData.jump_pass_priority < 0 || formData.jump_pass_priority > 1000)) {
             errors.jump_pass_priority = 'Priority must be between 0 and 1000';
         }
@@ -333,10 +520,9 @@ const JumpPassComp = () => {
             errors.price = 'Price cannot be negative';
         }
 
-        if (formData.tax_included === 'yes' && formData.tax_percentage) {
-            if (formData.tax_percentage < 0 || formData.tax_percentage > 100) {
-                errors.tax_percentage = 'Tax percentage must be between 0 and 100';
-            }
+        // Age validation - no numbers allowed
+        if (formData.age_allowed && /\d/.test(formData.age_allowed)) {
+            errors.age_allowed = 'Age allowed cannot contain numbers';
         }
 
         const detectedConflicts = detectConflicts(formData, hoursOfOperation);
@@ -397,18 +583,19 @@ const JumpPassComp = () => {
 
             const method = editingPass ? 'PUT' : 'POST';
 
-            const submitData = { ...formData };
-            const optionalFields = ['jump_pass_pitch', 'starting_day_name', 'ending_day_name', 'comments', 'tax_percentage'];
-            
+            const submitData = {
+                ...formData,
+                tax_included: formData.tax_included === 'yes',
+                can_custom_take_part_in_multiple: formData.can_custom_take_part_in_multiple === 'yes'
+            };
+
+            const optionalFields = ['jump_pass_pitch', 'starting_day_name', 'ending_day_name', 'comments'];
+
             optionalFields.forEach(field => {
                 if (submitData[field] === '') {
                     submitData[field] = null;
                 }
             });
-
-            if (submitData.tax_included === 'no') {
-                submitData.tax_percentage = null;
-            }
 
             const response = await fetch(url, {
                 method: method,
@@ -478,17 +665,10 @@ const JumpPassComp = () => {
         return value === 'yes' ? 'Yes' : 'No';
     };
 
-    const calculateFinalPrice = (price, taxPercentage) => {
-        if (!price) return '0.00';
-        const priceNum = parseFloat(price);
-        const taxNum = parseFloat(taxPercentage || 0);
-        return (priceNum + (priceNum * taxNum / 100)).toFixed(2);
-    };
-
     const handleEdit = (pass) => {
         const jumpTimeValue = pass.jump_time_allowed;
-        const isCustom = !JUMP_TIME_OPTIONS.some(option => option.value === jumpTimeValue);
-        
+        const isCustom = !JUMP_TIME_OPTIONS.some(option => option.value === jumpTimeValue) && jumpTimeValue !== 'all day';
+
         if (isCustom && jumpTimeValue) {
             const timeMatch = jumpTimeValue.match(/(\d+)\s*minutes?/i);
             if (timeMatch) {
@@ -502,18 +682,18 @@ const JumpPassComp = () => {
 
         setFormData({
             jump_pass_priority: pass.jump_pass_priority,
-            schedule_with: pass.schedule_with,
+            schedule_with: Array.isArray(pass.schedule_with) ? pass.schedule_with : [pass.schedule_with].filter(Boolean),
             pass_name: pass.pass_name,
             age_allowed: pass.age_allowed,
             jump_time_allowed: pass.jump_time_allowed,
             price: pass.price,
-            tax_included: pass.tax_percentage && pass.tax_percentage > 0 ? 'yes' : 'no',
-            tax_percentage: pass.tax_percentage || '',
+            tax_included: pass.tax_included ? 'yes' : 'no',
             recommendation: pass.recommendation,
             jump_pass_pitch: pass.jump_pass_pitch || '',
             starting_day_name: pass.starting_day_name || '',
             ending_day_name: pass.ending_day_name || '',
-            comments: pass.comments || ''
+            comments: pass.comments || '',
+            can_custom_take_part_in_multiple: pass.can_custom_take_part_in_multiple ? 'yes' : 'no'
         });
         setEditingPass(pass);
         setIsFormOpen(true);
@@ -607,18 +787,18 @@ const JumpPassComp = () => {
                                     ✕
                                 </button>
                             </div>
-                            
+
                             <div className="mb-6">
                                 <p className="text-gray-700 mb-4">
                                     The jump pass you're trying to create conflicts with the available hours of operation.
                                 </p>
-                                
+
                                 <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4 mb-4">
                                     <h4 className="font-semibold text-yellow-800 mb-2">New Jump Pass:</h4>
                                     <div className="text-sm text-yellow-700">
-                                        <p><strong>Schedule:</strong> {formatScheduleWith(pendingSubmission?.formData.schedule_with)}</p>
-                                        <p><strong>Days:</strong> {pendingSubmission?.formData.starting_day_name}{pendingSubmission?.formData.ending_day_name ? ` to ${pendingSubmission.formData.ending_day_name}` : ''}</p>
-                                        <p><strong>Jump Time:</strong> {pendingSubmission?.formData.jump_time_allowed}</p>
+                                        <p><strong>Schedule:</strong> {formData.schedule_with?.map(s => formatScheduleWith(s)).join(', ')}</p>
+                                        <p><strong>Days:</strong> {formData.starting_day_name}{formData.ending_day_name ? ` to ${formData.ending_day_name}` : ''}</p>
+                                        <p><strong>Jump Time:</strong> {formData.jump_time_allowed}</p>
                                     </div>
                                 </div>
 
@@ -634,21 +814,22 @@ const JumpPassComp = () => {
                                                     High Priority
                                                 </span>
                                             </div>
-                                            
+
                                             <p className="text-red-700 mb-3">{conflict.message}</p>
-                                            
+
                                             {conflict.availableTime && (
                                                 <div className="text-sm text-red-600">
                                                     <p><strong>Available Time:</strong> {conflict.availableTime}</p>
                                                     <p><strong>Available Minutes:</strong> {conflict.availableMinutes} mins</p>
                                                     <p><strong>Requested Minutes:</strong> {conflict.requestedMinutes} mins</p>
+                                                    <p><strong>Type:</strong> {conflict.hourType === 'special' ? 'Special Hours' : 'Regular Hours'}</p>
                                                 </div>
                                             )}
                                         </div>
                                     ))}
                                 </div>
                             </div>
-                            
+
                             <div className="flex justify-between pt-4 border-t border-gray-200">
                                 <button
                                     onClick={() => handleConflictResolution('cancel')}
@@ -672,12 +853,12 @@ const JumpPassComp = () => {
 
             {!isFormOpen && location_id && (
                 <div className="space-y-4">
-                    {jumpPasses 
+                    {jumpPasses
                         .sort((a, b) => a.jump_pass_priority - b.jump_pass_priority)
                         .map((pass) => {
                             const isTaxIncluded = pass.tax_included;
-                            const finalPrice = calculateFinalPrice(pass.price, pass.tax_percentage);
-                            
+                            const finalPrice = parseFloat(pass.price).toFixed(2);
+
                             return (
                                 <div key={pass.jump_pass_id} className="bg-white rounded-lg shadow-md border border-gray-200 p-6 hover:shadow-lg transition-shadow">
                                     <div className="flex justify-between items-start mb-4">
@@ -688,8 +869,16 @@ const JumpPassComp = () => {
                                                     Priority: {pass.jump_pass_priority}
                                                 </span>
                                                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                                    {formatScheduleWith(pass.schedule_with)}
+                                                    {Array.isArray(pass.schedule_with)
+                                                        ? pass.schedule_with.map(s => formatScheduleWith(s)).join(', ')
+                                                        : formatScheduleWith(pass.schedule_with)
+                                                    }
                                                 </span>
+                                                {pass.can_custom_take_part_in_multiple && (
+                                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                                        Multiple Schedule
+                                                    </span>
+                                                )}
                                             </div>
                                         </div>
                                         <div className="flex space-x-2">
@@ -719,41 +908,19 @@ const JumpPassComp = () => {
                                         </div>
                                         <div>
                                             <span className="text-gray-600">Price:</span>
-                                            <p className="font-medium">${parseFloat(pass.price).toFixed(2)}</p>
+                                            <p className="font-medium">${finalPrice}</p>
                                         </div>
                                         <div>
                                             <span className="text-gray-600">Tax Included:</span>
                                             <p className="font-medium">
                                                 {isTaxIncluded ? (
-                                                    <span className="text-green-600">
-                                                        Yes ({pass.tax_percentage}%)
-                                                    </span>
+                                                    <span className="text-green-600">Yes</span>
                                                 ) : (
-                                                    <span className="text-gray-600">No</span>
+                                                    <span className="text-orange-600">No</span>
                                                 )}
                                             </p>
                                         </div>
                                     </div>
-
-                                    {isTaxIncluded && (
-                                        <div className="mt-3 p-3 bg-gray-50 rounded-md">
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                                                <div>
-                                                    <span className="text-gray-600">Base Price:</span>
-                                                    <p className="font-medium">${parseFloat(pass.price).toFixed(2)}</p>
-                                                </div>
-                                                <div>
-                                                    <span className="text-gray-600">Final Price:</span>
-                                                    <p className="font-medium text-green-600">
-                                                        ${finalPrice}
-                                                        <span className="text-xs text-gray-500 ml-1">
-                                                            (incl. {pass.tax_percentage}% tax)
-                                                        </span>
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
 
                                     {pass.starting_day_name && (
                                         <div className="mt-3">
@@ -835,18 +1002,20 @@ const JumpPassComp = () => {
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                     Priority *
                                 </label>
-                                <input
-                                    type="number"
+                                <select
                                     name="jump_pass_priority"
                                     value={formData.jump_pass_priority}
                                     onChange={handleInputChange}
-                                    min="0"
-                                    max="1000"
-                                    className={`mt-1 block w-full rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border ${
-                                        fieldErrors.jump_pass_priority ? 'border-red-300' : 'border-gray-300'
-                                    }`}
-                                    placeholder="Enter priority (lower numbers show first)"
-                                />
+                                    className={`mt-1 block w-full rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border ${fieldErrors.jump_pass_priority ? 'border-red-300' : 'border-gray-300'
+                                        }`}
+                                >
+                                    <option value="">Select Priority</option>
+                                    {priorityOptions.map(option => (
+                                        <option key={option} value={option}>
+                                            {option === 999 ? 'Do not pitch' : option}
+                                        </option>
+                                    ))}
+                                </select>
                                 {fieldErrors.jump_pass_priority && (
                                     <p className="mt-1 text-sm text-red-600">{fieldErrors.jump_pass_priority}</p>
                                 )}
@@ -854,23 +1023,40 @@ const JumpPassComp = () => {
 
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Schedule With *
+                                    Can Custom Take Part in Multiple Schedules
                                 </label>
                                 <select
-                                    name="schedule_with"
-                                    value={formData.schedule_with}
+                                    name="can_custom_take_part_in_multiple"
+                                    value={formData.can_custom_take_part_in_multiple}
                                     onChange={handleInputChange}
-                                    className={`mt-1 block w-full rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border ${
-                                        fieldErrors.schedule_with ? 'border-red-300' : 'border-gray-300'
-                                    }`}
+                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border"
                                 >
-                                    <option value="">Select Schedule Type</option>
-                                    {SCHEDULE_WITH.map(option => (
+                                    {YES_NO_OPTIONS.map(option => (
                                         <option key={option} value={option}>
-                                            {formatScheduleWith(option)}
+                                            {formatYesNo(option)}
                                         </option>
                                     ))}
                                 </select>
+                            </div>
+
+                            <div className="md:col-span-2">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Schedule With *
+                                </label>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-2">
+                                    {SCHEDULE_WITH.map(option => (
+                                        <label key={option} className="flex items-center space-x-2">
+                                            <input
+                                                type="checkbox"
+                                                value={option}
+                                                checked={formData.schedule_with?.includes(option) || false}
+                                                onChange={handleScheduleWithChange}
+                                                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                            />
+                                            <span className="text-sm text-gray-700">{formatScheduleWith(option)}</span>
+                                        </label>
+                                    ))}
+                                </div>
                                 {fieldErrors.schedule_with && (
                                     <p className="mt-1 text-sm text-red-600">{fieldErrors.schedule_with}</p>
                                 )}
@@ -885,9 +1071,8 @@ const JumpPassComp = () => {
                                     name="pass_name"
                                     value={formData.pass_name}
                                     onChange={handleInputChange}
-                                    className={`mt-1 block w-full rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border ${
-                                        fieldErrors.pass_name ? 'border-red-300' : 'border-gray-300'
-                                    }`}
+                                    className={`mt-1 block w-full rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border ${fieldErrors.pass_name ? 'border-red-300' : 'border-gray-300'
+                                        }`}
                                     placeholder="Enter pass name"
                                 />
                                 {fieldErrors.pass_name && (
@@ -899,36 +1084,34 @@ const JumpPassComp = () => {
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                     Age Allowed *
                                 </label>
-                                <select
+                                <input
+                                    type="text"
                                     name="age_allowed"
                                     value={formData.age_allowed}
-                                    onChange={handleInputChange}
-                                    className={`mt-1 block w-full rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border ${
-                                        fieldErrors.age_allowed ? 'border-red-300' : 'border-gray-300'
-                                    }`}
-                                >
-                                    <option value="">Select Age Group</option>
-                                    {AGES_ALLOWED.map(age => (
-                                        <option key={age} value={age}>{age}</option>
-                                    ))}
-                                </select>
+                                    onChange={handleAgeAllowedChange}
+                                    className={`mt-1 block w-full rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border ${fieldErrors.age_allowed ? 'border-red-300' : 'border-gray-300'
+                                        }`}
+                                    placeholder="e.g., All Ages, Adults Only"
+                                />
                                 {fieldErrors.age_allowed && (
                                     <p className="mt-1 text-sm text-red-600">{fieldErrors.age_allowed}</p>
                                 )}
+                                <p className="mt-1 text-xs text-gray-500">
+                                    Letters and spaces only, numbers not allowed
+                                </p>
                             </div>
 
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                     Jump Time Allowed *
                                 </label>
-                                
+
                                 {!isCustomJumpTime ? (
                                     <select
                                         value={formData.jump_time_allowed}
                                         onChange={(e) => handleJumpTimeSelect(e.target.value)}
-                                        className={`mt-1 block w-full rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border ${
-                                            fieldErrors.jump_time_allowed ? 'border-red-300' : 'border-gray-300'
-                                        }`}
+                                        className={`mt-1 block w-full rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border ${fieldErrors.jump_time_allowed ? 'border-red-300' : 'border-gray-300'
+                                            }`}
                                     >
                                         <option value="">Select Jump Time</option>
                                         {JUMP_TIME_OPTIONS.map(option => (
@@ -946,9 +1129,8 @@ const JumpPassComp = () => {
                                             onChange={handleCustomJumpTimeChange}
                                             min="1"
                                             max="1440"
-                                            className={`flex-1 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border ${
-                                                fieldErrors.jump_time_allowed ? 'border-red-300' : 'border-gray-300'
-                                            }`}
+                                            className={`flex-1 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border ${fieldErrors.jump_time_allowed ? 'border-red-300' : 'border-gray-300'
+                                                }`}
                                             placeholder="Enter minutes"
                                         />
                                         <button
@@ -967,11 +1149,11 @@ const JumpPassComp = () => {
                                         </button>
                                     </div>
                                 )}
-                                
+
                                 {fieldErrors.jump_time_allowed && (
                                     <p className="mt-1 text-sm text-red-600">{fieldErrors.jump_time_allowed}</p>
                                 )}
-                                
+
                                 {isCustomJumpTime && (
                                     <p className="mt-1 text-xs text-gray-500">
                                         Enter the number of minutes for the jump time
@@ -994,9 +1176,8 @@ const JumpPassComp = () => {
                                         onChange={handleInputChange}
                                         step="0.01"
                                         min="0"
-                                        className={`mt-1 block w-full pl-7 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border ${
-                                            fieldErrors.price ? 'border-red-300' : 'border-gray-300'
-                                        }`}
+                                        className={`mt-1 block w-full pl-7 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border ${fieldErrors.price ? 'border-red-300' : 'border-gray-300'
+                                            }`}
                                         placeholder="0.00"
                                     />
                                 </div>
@@ -1013,9 +1194,8 @@ const JumpPassComp = () => {
                                     name="tax_included"
                                     value={formData.tax_included}
                                     onChange={handleInputChange}
-                                    className={`mt-1 block w-full rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border ${
-                                        fieldErrors.tax_included ? 'border-red-300' : 'border-gray-300'
-                                    }`}
+                                    className={`mt-1 block w-full rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border ${fieldErrors.tax_included ? 'border-red-300' : 'border-gray-300'
+                                        }`}
                                 >
                                     <option value="">Select Tax Option</option>
                                     {YES_NO_OPTIONS.map(option => (
@@ -1028,62 +1208,6 @@ const JumpPassComp = () => {
                                     <p className="mt-1 text-sm text-red-600">{fieldErrors.tax_included}</p>
                                 )}
                             </div>
-
-                            {formData.tax_included === 'yes' && (
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Tax Percentage *
-                                    </label>
-                                    <div className="relative">
-                                        <input
-                                            type="number"
-                                            name="tax_percentage"
-                                            value={formData.tax_percentage}
-                                            onChange={handleInputChange}
-                                            step="0.01"
-                                            min="0"
-                                            max="100"
-                                            className={`mt-1 block w-full rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border ${
-                                                fieldErrors.tax_percentage ? 'border-red-300' : 'border-gray-300'
-                                            }`}
-                                            placeholder="0.00"
-                                        />
-                                        <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                                            <span className="text-gray-500 sm:text-sm">%</span>
-                                        </div>
-                                    </div>
-                                    {fieldErrors.tax_percentage && (
-                                        <p className="mt-1 text-sm text-red-600">{fieldErrors.tax_percentage}</p>
-                                    )}
-                                </div>
-                            )}
-
-                            {formData.price && (
-                                <div className="md:col-span-2 p-4 bg-gray-50 rounded-md">
-                                    <h4 className="font-medium text-gray-700 mb-2">Price Calculation:</h4>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                                        <div>
-                                            <span className="text-gray-600">Base Price:</span>
-                                            <p className="font-medium">${parseFloat(formData.price).toFixed(2)}</p>
-                                        </div>
-                                        <div>
-                                            <span className="text-gray-600">Final Price:</span>
-                                            <p className="font-medium text-green-600">
-                                                {formData.tax_included === 'yes' && formData.tax_percentage ? (
-                                                    <>
-                                                        ${calculateFinalPrice(formData.price, formData.tax_percentage)}
-                                                        <span className="text-xs text-gray-500 ml-1">
-                                                            (incl. {formData.tax_percentage}% tax)
-                                                        </span>
-                                                    </>
-                                                ) : (
-                                                    `$${parseFloat(formData.price).toFixed(2)}`
-                                                )}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
 
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1128,9 +1252,8 @@ const JumpPassComp = () => {
                                     value={formData.recommendation}
                                     onChange={handleInputChange}
                                     rows={3}
-                                    className={`mt-1 block w-full rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border ${
-                                        fieldErrors.recommendation ? 'border-red-300' : 'border-gray-300'
-                                    }`}
+                                    className={`mt-1 block w-full rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border ${fieldErrors.recommendation ? 'border-red-300' : 'border-gray-300'
+                                        }`}
                                     placeholder="Enter recommendation text..."
                                 />
                                 {fieldErrors.recommendation && (
