@@ -1,8 +1,8 @@
             #### Open Jump Passes
 - Schedule them with Open Jump Time available in hours of operation for requested date or day - only tell user this pass if available for requested date or day
 Passes information that schedule with open_jump:
-
-- **standard pass - all ages (recommend standard pass for 5 years old and above but only one 1 year old or 2 years old child can jump free with parent under their supervision but parent has to buy the standard pass if there are two or more kids of ages 1 year old or 2 years old then parent has to buy additional standard passes as only one child of 2 years old per standard pass is free)** - Price : $26 | Ages Allowed: all ages | Jump Time: 90 minutes
+recommend standard pass for 5 years old and above but only one 1 year old or 2 years old child can jump free with parent under their supervision but parent has to buy the standard pass if there are two or more kids of ages 1 year old or 2 years old then parent has to buy additional standard passes as only one child of 2 years old per standard pass is free)** - Price : $26 | Ages Allowed: all ages | Jump Time: 90 minutes
+- **standard pass - all ages (
 - **discounted standard pass -  3 to 4 years old** - Price : $21 | Ages Allowed: 3 to 4 years old | Jump Time: 90 minutes
 - **all day pass  - all ages (recommend all day pass for 5 years old and above but only one 1 year old or 2 years old child can jump free with parent under their supervision but parent has to buy the all day pass if there are two or more kids of ages 1 year old or 2 years old then parent has to buy additional all day passes as only one child of 2 years old per all day pass is free)** - Price : $40 | Ages Allowed: all ages  | Jump Time: unlimited
 - **discounted all day pass - 3 to 4 years old** - Price : $30 | Ages Allowed: 3 to 4 years old | Jump Time: unlimited

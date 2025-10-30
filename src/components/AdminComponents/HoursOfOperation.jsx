@@ -1,6 +1,10 @@
 // still the model problem is not solved
 // Model will not return when and also not update after deleate any conflict
 
+// if the closed was on 31/10/2025
+// and i add a speical hours from 29/10/2025 to 03/11/2025  then its will not show any confilict
+
+// Also give the option to enter the custom Schedcule with in Hours of operatoin. 
 
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';

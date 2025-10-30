@@ -1,12 +1,20 @@
 
 
+
+// Import required React and Redux hooks
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 
 const JumpPassComp = () => {
+    // Get location_id from URL parameters and initialize navigation
     const { location_id } = useParams();
+    const navigate = useNavigate();
+    
+    // Get user data from Redux store
     const userData = useSelector((state) => state.auth.userData);
+    
+    // State declarations for component data management
     const [jumpPasses, setJumpPasses] = useState([]);
     const [location, setLocation] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -16,11 +24,17 @@ const JumpPassComp = () => {
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [fieldErrors, setFieldErrors] = useState({});
 
+    // State for hours of operation and conflict management
     const [hoursOfOperation, setHoursOfOperation] = useState([]);
     const [conflicts, setConflicts] = useState([]);
     const [showConflictPopup, setShowConflictPopup] = useState(false);
     const [pendingSubmission, setPendingSubmission] = useState(null);
 
+    // NEW: State for dynamic schedule options
+    const [availableSchedules, setAvailableSchedules] = useState([]);
+    const [hasSchedules, setHasSchedules] = useState(true);
+
+    // Form data state initialization
     const [formData, setFormData] = useState({
         jump_pass_priority: '',
         schedule_with: [],
@@ -37,10 +51,12 @@ const JumpPassComp = () => {
         can_custom_take_part_in_multiple: 'no'
     });
 
+    // State for custom jump time handling
     const [isCustomJumpTime, setIsCustomJumpTime] = useState(false);
     const [customJumpTime, setCustomJumpTime] = useState('');
     const [priorityOptions, setPriorityOptions] = useState([]);
 
+    // Predefined jump time options
     const JUMP_TIME_OPTIONS = [
         { value: '30 minutes', label: '30 mins' },
         { value: '60 minutes', label: '60 mins' },
@@ -51,22 +67,63 @@ const JumpPassComp = () => {
         { value: 'all day', label: 'All Day' }
     ];
 
-    const SCHEDULE_WITH = ['little_leaper', 'open_jump', 'sensory_hour', 'glow'];
+    // REMOVED: Hardcoded SCHEDULE_WITH array - now dynamic
+
+    // Yes/No options for form fields
     const YES_NO_OPTIONS = ['yes', 'no'];
+    
+    // Days of week for date selection
     const DAYS_OF_WEEK = [
         'Monday', 'Tuesday', 'Wednesday', 'Thursday',
         'Friday', 'Saturday', 'Sunday'
     ];
 
+    // Function to get authentication token from localStorage or Redux store
     const getAuthToken = () => {
         return localStorage.getItem('accessToken') || userData?.token;
     };
 
+    // NEW: Function to fetch available schedules from hours of operation
+    const fetchAvailableSchedules = async () => {
+        if (!location_id) return;
 
-    // UPDATED: Generate priority options - always include 999 (Do not pitch)
+        try {
+            const token = getAuthToken();
+            const response = await fetch(`${import.meta.env.VITE_BackendApi}/hours/${location_id}/`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                console.log("This is the hours of operation =-= = = = = = = = = =", data)
+                setHoursOfOperation(data);
+                
+                // Extract unique schedule_with values from hours of operation
+                // const uniqueSchedules = [...new Set(data.map(hour => hour.schedule_with))].filter(Boolean);
+                const uniqueSchedules = [...new Set(data.map(hour => hour.schedule_with))]
+                    .filter(schedule => schedule && schedule !== 'closed');
+                
+                setAvailableSchedules(uniqueSchedules);
+                setHasSchedules(uniqueSchedules.length > 0);
+                
+                return uniqueSchedules;
+            } else {
+                setHasSchedules(false);
+                return [];
+            }
+        } catch (err) {
+            console.error('Failed to fetch schedules:', err);
+            setHasSchedules(false);
+            return [];
+        }
+    };
+
+    // Generate priority options based on existing jump passes
     const generatePriorityOptions = (existingPasses) => {
         if (!existingPasses || existingPasses.length === 0) {
-            // When no passes exist, show default priorities 1-4 AND always include 999
             return [1, 2, 3, 4, 999];
         }
 
@@ -75,25 +132,20 @@ const JumpPassComp = () => {
             .filter(priority => priority !== 999)
             .sort((a, b) => a - b);
 
-        // Get all used priorities
         const usedPriorities = new Set(existingPriorities);
-
-        // Find available priorities from 1 to 20
         const availableOptions = [];
+        
         for (let i = 1; i <= 20; i++) {
             if (!usedPriorities.has(i)) {
                 availableOptions.push(i);
             }
         }
 
-        // Take first 4 available options
         const topAvailable = availableOptions.slice(0, 4);
-
-        // ALWAYS include 999 (Do not pitch) - regardless of whether there are other passes
         return [...topAvailable, 999];
     };
 
-
+    // Handle jump time selection with custom time option
     const handleJumpTimeSelect = (value) => {
         if (value === 'custom') {
             setIsCustomJumpTime(true);
@@ -110,6 +162,7 @@ const JumpPassComp = () => {
         }
     };
 
+    // Handle custom jump time input change
     const handleCustomJumpTimeChange = (e) => {
         const value = e.target.value;
         setCustomJumpTime(value);
@@ -126,6 +179,7 @@ const JumpPassComp = () => {
         }
     };
 
+    // Handle schedule selection with checkboxes
     const handleScheduleWithChange = (e) => {
         const { value, checked } = e.target;
         setFormData(prev => {
@@ -152,9 +206,9 @@ const JumpPassComp = () => {
         }
     };
 
+    // Handle age allowed input with validation for letters only
     const handleAgeAllowedChange = (e) => {
         const value = e.target.value;
-        // Only allow letters and spaces, no numbers
         if (/^[a-zA-Z\s]*$/.test(value)) {
             setFormData(prev => ({
                 ...prev,
@@ -170,6 +224,7 @@ const JumpPassComp = () => {
         }
     };
 
+    // Fetch location details from API
     const fetchLocation = async () => {
         try {
             const token = getAuthToken();
@@ -189,6 +244,7 @@ const JumpPassComp = () => {
         }
     };
 
+    // Fetch jump passes for the current location
     const fetchJumpPasses = async () => {
         if (!location_id) return;
 
@@ -210,7 +266,6 @@ const JumpPassComp = () => {
             const data = await response.json();
             setJumpPasses(data);
 
-            // Generate priority options after fetching jump passes
             const options = generatePriorityOptions(data);
             setPriorityOptions(options);
         } catch (err) {
@@ -220,36 +275,22 @@ const JumpPassComp = () => {
         }
     };
 
+    // NEW: Updated fetchHoursOfOperation to use the common function
     const fetchHoursOfOperation = async () => {
-        if (!location_id) return;
-
-        try {
-            const token = getAuthToken();
-            const response = await fetch(`${import.meta.env.VITE_BackendApi}/hours/${location_id}/`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                setHoursOfOperation(data);
-            }
-        } catch (err) {
-            console.error('Failed to fetch hours of operation:', err);
-        }
+        await fetchAvailableSchedules();
     };
 
+    // Convert time string to minutes for calculations
     const timeToMinutes = (timeStr) => {
         if (!timeStr) return 0;
         const [hours, minutes] = timeStr.split(':').map(Number);
         return hours * 60 + minutes;
     };
 
+    // Parse jump time string to minutes
     const parseJumpTimeToMinutes = (jumpTime) => {
         if (!jumpTime) return 0;
-        if (jumpTime.toLowerCase() === 'all day') return 24 * 60; // 24 hours in minutes
+        if (jumpTime.toLowerCase() === 'all day') return 24 * 60;
 
         const timeStr = jumpTime.toLowerCase().trim();
         const numbers = timeStr.match(/\d+(\.\d+)?/g);
@@ -266,14 +307,15 @@ const JumpPassComp = () => {
         }
     };
 
+    // Get index of day in week array
     const getDayIndex = (dayName) => {
         return DAYS_OF_WEEK.indexOf(dayName);
     };
 
+    // Get all days in a range (start to end day)
     const getDaysInRange = (startDay, endDay) => {
         if (!startDay) return [];
 
-        // If no end day specified, return only the start day
         if (!endDay) {
             return [startDay];
         }
@@ -292,11 +334,10 @@ const JumpPassComp = () => {
         return days;
     };
 
-    // NEW: Helper function to check if day is in range
+    // Check if a day is within a range
     const isDayInRange = (day, startDay, endDay) => {
         if (!startDay) return false;
 
-        // If no end day, only check if it matches start day
         if (!endDay) {
             return day === startDay;
         }
@@ -305,17 +346,15 @@ const JumpPassComp = () => {
         const startIndex = getDayIndex(startDay);
         let endIndex = getDayIndex(endDay);
 
-        // Handle week wrap-around if end is before start
         if (endIndex < startIndex) {
             endIndex += 7;
         }
 
-        // Check if day is in range (considering potential wrap-around)
         return (dayIndex >= startIndex && dayIndex <= endIndex) ||
             (dayIndex + 7 >= startIndex && dayIndex + 7 <= endIndex);
     };
 
-    // COMPLETELY REWRITTEN CONFLICT DETECTION - FIXED FOR MULTIPLE SCHEDULES
+    // Detect conflicts between jump pass and hours of operation
     const detectConflicts = (newPass, existingHours) => {
         const conflicts = [];
 
@@ -327,7 +366,6 @@ const JumpPassComp = () => {
         const jumpTimeMinutes = parseJumpTimeToMinutes(newPass.jump_time_allowed);
         const isAllDay = newPass.jump_time_allowed.toLowerCase() === 'all day';
 
-        // For each day in range, check if AT LEAST ONE schedule is available
         daysInRange.forEach(day => {
             const dayConflicts = [];
             let hasAtLeastOneAvailableSchedule = false;
@@ -337,21 +375,18 @@ const JumpPassComp = () => {
                 let maxAvailableMinutes = 0;
                 let availableTime = '';
 
-                // Check for special hours on this specific day
                 const specialHours = existingHours.filter(hour =>
                     hour.hours_type === 'special' &&
                     hour.schedule_with === schedule &&
                     getDayNameFromDate(hour.starting_date) === day
                 );
 
-                // Check for regular hours
                 const regularHours = existingHours.filter(hour =>
                     hour.hours_type === 'regular' &&
                     hour.schedule_with === schedule &&
                     isDayInRange(day, hour.starting_day_name, hour.ending_day_name)
                 );
 
-                // Check special hours first
                 if (specialHours.length > 0) {
                     hasAvailableHours = true;
                     specialHours.forEach(hour => {
@@ -362,7 +397,6 @@ const JumpPassComp = () => {
                         }
                     });
                 }
-                // Then check regular hours
                 else if (regularHours.length > 0) {
                     hasAvailableHours = true;
                     regularHours.forEach(hour => {
@@ -374,14 +408,12 @@ const JumpPassComp = () => {
                     });
                 }
 
-                // If this schedule has available hours and sufficient time, mark day as available
                 if (hasAvailableHours) {
                     if (isAllDay) {
                         hasAtLeastOneAvailableSchedule = true;
                     } else if (jumpTimeMinutes <= maxAvailableMinutes) {
                         hasAtLeastOneAvailableSchedule = true;
                     } else {
-                        // Schedule has hours but not enough time
                         dayConflicts.push({
                             type: 'TIME_EXCEEDS_AVAILABILITY',
                             message: `Jump time (${newPass.jump_time_allowed}) exceeds available time for ${formatScheduleWith(schedule)} on ${day}`,
@@ -395,7 +427,6 @@ const JumpPassComp = () => {
                         });
                     }
                 } else {
-                    // Schedule has no hours at all for this day
                     dayConflicts.push({
                         type: 'SCHEDULE_NOT_AVAILABLE',
                         message: `${formatScheduleWith(schedule)} is not available on ${day}`,
@@ -406,8 +437,6 @@ const JumpPassComp = () => {
                 }
             });
 
-            // Only add conflicts if NO schedule is available for this day
-            // OR if all schedules have time conflicts (but at least one has hours)
             if (!hasAtLeastOneAvailableSchedule && dayConflicts.length > 0) {
                 conflicts.push(...dayConflicts);
             }
@@ -416,15 +445,14 @@ const JumpPassComp = () => {
         return conflicts;
     };
 
+    // Get day name from date string
     const getDayNameFromDate = (dateString) => {
         if (!dateString) return '';
         try {
-            // Handle different date string formats
             let date;
             if (dateString.includes('T')) {
                 date = new Date(dateString);
             } else {
-                // If it's just a date string without time
                 date = new Date(dateString + 'T00:00:00');
             }
 
@@ -441,6 +469,7 @@ const JumpPassComp = () => {
         }
     };
 
+    // Format time string to readable format
     const formatTime = (time) => {
         if (!time) return 'N/A';
         return new Date(`2000-01-01T${time}`).toLocaleTimeString('en-US', {
@@ -450,6 +479,7 @@ const JumpPassComp = () => {
         });
     };
 
+    // Handle general input changes in form
     const handleInputChange = (e) => {
         const { name, value, type } = e.target;
 
@@ -466,6 +496,7 @@ const JumpPassComp = () => {
         }
     };
 
+    // Reset form to initial state
     const resetForm = () => {
         setFormData({
             jump_pass_priority: '',
@@ -490,6 +521,7 @@ const JumpPassComp = () => {
         setFieldErrors({});
     };
 
+    // Validate form data and check for conflicts
     const validateFormWithConflicts = () => {
         const errors = {};
         const requiredFields = [
@@ -507,7 +539,6 @@ const JumpPassComp = () => {
             }
         });
 
-        // Validate schedule_with has at least one selection
         if (!formData.schedule_with || formData.schedule_with.length === 0) {
             errors.schedule_with = 'At least one schedule type must be selected';
         }
@@ -520,7 +551,6 @@ const JumpPassComp = () => {
             errors.price = 'Price cannot be negative';
         }
 
-        // Age validation - no numbers allowed
         if (formData.age_allowed && /\d/.test(formData.age_allowed)) {
             errors.age_allowed = 'Age allowed cannot contain numbers';
         }
@@ -533,6 +563,7 @@ const JumpPassComp = () => {
         return errors;
     };
 
+    // Handle conflict resolution popup actions
     const handleConflictResolution = async (action) => {
         if (action === 'proceed') {
             setShowConflictPopup(false);
@@ -544,6 +575,7 @@ const JumpPassComp = () => {
         }
     };
 
+    // Handle form submission with validation
     const handleSubmit = async (e) => {
         e.preventDefault();
 
@@ -566,6 +598,7 @@ const JumpPassComp = () => {
         await submitForm({ formData, editingPass });
     };
 
+    // Submit form data to API
     const submitForm = async (submissionData) => {
         if (!submissionData) return;
 
@@ -642,6 +675,7 @@ const JumpPassComp = () => {
         }
     };
 
+    // Format backend errors for display
     const formatBackendErrors = (errorData) => {
         const formattedErrors = {};
         Object.keys(errorData).forEach(field => {
@@ -654,6 +688,7 @@ const JumpPassComp = () => {
         return formattedErrors;
     };
 
+    // Format schedule name for display
     const formatScheduleWith = (schedule) => {
         if (!schedule) return 'N/A';
         return schedule.split('_').map(word =>
@@ -661,10 +696,12 @@ const JumpPassComp = () => {
         ).join(' ');
     };
 
+    // Format yes/no values for display
     const formatYesNo = (value) => {
         return value === 'yes' ? 'Yes' : 'No';
     };
 
+    // Handle edit jump pass - populate form with existing data
     const handleEdit = (pass) => {
         const jumpTimeValue = pass.jump_time_allowed;
         const isCustom = !JUMP_TIME_OPTIONS.some(option => option.value === jumpTimeValue) && jumpTimeValue !== 'all day';
@@ -702,6 +739,7 @@ const JumpPassComp = () => {
         setFieldErrors({});
     };
 
+    // Handle delete jump pass with confirmation
     const handleDelete = async (passId) => {
         if (!window.confirm('Are you sure you want to delete this jump pass?')) {
             return;
@@ -732,6 +770,12 @@ const JumpPassComp = () => {
         }
     };
 
+    // NEW: Function to navigate to hours of operation page
+    const navigateToHoursOfOperation = () => {
+        navigate(`/hours-of-operation/${location_id}`);
+    };
+
+    // Fetch data when component mounts or location_id changes
     useEffect(() => {
         if (location_id) {
             fetchLocation();
@@ -740,6 +784,40 @@ const JumpPassComp = () => {
         }
     }, [location_id]);
 
+    // NEW: Render error state when no schedules are available
+    if (!hasSchedules) {
+        return (
+            <div className="space-y-6">
+                <div className="flex justify-between items-center">
+                    <div>
+                        <h2 className="text-2xl font-bold text-gray-900">Jump Passes</h2>
+                        {location && (
+                            <p className="text-gray-600 mt-1">
+                                Managing jump passes for: <span className="font-semibold">{location.location_name}</span>
+                            </p>
+                        )}
+                    </div>
+                </div>
+
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-6 rounded-md text-center">
+                    <div className="text-red-500 text-5xl mb-4">⚠️</div>
+                    <h3 className="text-lg font-semibold mb-2">No Hours of Operation Found</h3>
+                    <p className="mb-4">
+                        You need to set up hours of operation before creating jump passes.
+                        Please add operating hours for at least one schedule type.
+                    </p>
+                    <button
+                        onClick={navigateToHoursOfOperation}
+                        className="bg-red-600 text-white px-6 py-2 rounded-md hover:bg-red-700 transition-colors"
+                    >
+                        Go to Hours of Operation
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    // Main component render
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
@@ -866,7 +944,8 @@ const JumpPassComp = () => {
                                             <h3 className="text-xl font-semibold text-gray-900">{pass.pass_name}</h3>
                                             <div className="flex items-center space-x-4 mt-2">
                                                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                                    Priority: {pass.jump_pass_priority}
+                                                    {/* Priority: {pass.jump_pass_priority} */}
+                                                    Priority: {pass.jump_pass_priority === 999 ? 'Do not Pitch' : pass.jump_pass_priority}
                                                 </span>
                                                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                                     {Array.isArray(pass.schedule_with)
@@ -1039,12 +1118,13 @@ const JumpPassComp = () => {
                                 </select>
                             </div>
 
-                            <div className="md:col-span-2">
+                            {/* UPDATED: Dynamic schedule options */}
+                            {/* <div className="md:col-span-2">
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                     Schedule With *
                                 </label>
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-2">
-                                    {SCHEDULE_WITH.map(option => (
+                                    {availableSchedules.map(option => (
                                         <label key={option} className="flex items-center space-x-2">
                                             <input
                                                 type="checkbox"
@@ -1060,7 +1140,45 @@ const JumpPassComp = () => {
                                 {fieldErrors.schedule_with && (
                                     <p className="mt-1 text-sm text-red-600">{fieldErrors.schedule_with}</p>
                                 )}
-                            </div>
+                                {availableSchedules.length === 0 && (
+                                    <p className="mt-1 text-sm text-yellow-600">
+                                        No schedule types available. Please add hours of operation first.
+                                    </p>
+                                )}
+                            </div> */}
+
+
+<div className="md:col-span-2">
+  <label className="block text-sm font-medium text-gray-700 mb-3">
+    Schedule With *
+  </label>
+  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+    {availableSchedules.map(option => (
+      <label key={option} className="relative flex items-start p-4 border-2 border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-all duration-200 cursor-pointer">
+        <div className="flex items-center h-5">
+          <input
+            type="checkbox"
+            value={option}
+            checked={formData.schedule_with?.includes(option) || false}
+            onChange={handleScheduleWithChange}
+            className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 focus:ring-2 focus:ring-offset-2"
+          />
+        </div>
+        <div className="ml-3 text-sm">
+          <span className="font-medium text-gray-900 text-base">{formatScheduleWith(option)}</span>
+        </div>
+      </label>
+    ))}
+  </div>
+  {fieldErrors.schedule_with && (
+    <p className="mt-2 text-sm text-red-600">{fieldErrors.schedule_with}</p>
+  )}
+  {availableSchedules.length === 0 && (
+    <p className="mt-2 text-sm text-yellow-600">
+      No schedule types available. Please add hours of operation first.
+    </p>
+  )}
+</div>
 
                             <div className="md:col-span-2">
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1188,7 +1306,7 @@ const JumpPassComp = () => {
 
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Tax Included *
+                                    Tax Included (In Price) *
                                 </label>
                                 <select
                                     name="tax_included"
@@ -1325,3 +1443,8 @@ const JumpPassComp = () => {
 };
 
 export default JumpPassComp;
+
+
+
+
+    
