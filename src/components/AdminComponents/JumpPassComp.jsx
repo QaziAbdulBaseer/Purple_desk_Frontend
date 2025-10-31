@@ -1,6 +1,5 @@
 
 
-
 // Import required React and Redux hooks
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
@@ -10,10 +9,10 @@ const JumpPassComp = () => {
     // Get location_id from URL parameters and initialize navigation
     const { location_id } = useParams();
     const navigate = useNavigate();
-    
+
     // Get user data from Redux store
     const userData = useSelector((state) => state.auth.userData);
-    
+
     // State declarations for component data management
     const [jumpPasses, setJumpPasses] = useState([]);
     const [location, setLocation] = useState(null);
@@ -48,6 +47,7 @@ const JumpPassComp = () => {
         starting_day_name: '',
         ending_day_name: '',
         comments: '',
+        roller_booking_id: '',
         can_custom_take_part_in_multiple: 'no'
     });
 
@@ -71,7 +71,7 @@ const JumpPassComp = () => {
 
     // Yes/No options for form fields
     const YES_NO_OPTIONS = ['yes', 'no'];
-    
+
     // Days of week for date selection
     const DAYS_OF_WEEK = [
         'Monday', 'Tuesday', 'Wednesday', 'Thursday',
@@ -100,15 +100,15 @@ const JumpPassComp = () => {
                 const data = await response.json();
                 console.log("This is the hours of operation =-= = = = = = = = = =", data)
                 setHoursOfOperation(data);
-                
+
                 // Extract unique schedule_with values from hours of operation
                 // const uniqueSchedules = [...new Set(data.map(hour => hour.schedule_with))].filter(Boolean);
                 const uniqueSchedules = [...new Set(data.map(hour => hour.schedule_with))]
                     .filter(schedule => schedule && schedule !== 'closed');
-                
+
                 setAvailableSchedules(uniqueSchedules);
                 setHasSchedules(uniqueSchedules.length > 0);
-                
+
                 return uniqueSchedules;
             } else {
                 setHasSchedules(false);
@@ -134,7 +134,7 @@ const JumpPassComp = () => {
 
         const usedPriorities = new Set(existingPriorities);
         const availableOptions = [];
-        
+
         for (let i = 1; i <= 20; i++) {
             if (!usedPriorities.has(i)) {
                 availableOptions.push(i);
@@ -511,6 +511,7 @@ const JumpPassComp = () => {
             starting_day_name: '',
             ending_day_name: '',
             comments: '',
+            roller_booking_id: '',
             can_custom_take_part_in_multiple: 'no'
         });
         setEditingPass(null);
@@ -730,6 +731,7 @@ const JumpPassComp = () => {
             starting_day_name: pass.starting_day_name || '',
             ending_day_name: pass.ending_day_name || '',
             comments: pass.comments || '',
+            roller_booking_id: pass.roller_booking_id || '',
             can_custom_take_part_in_multiple: pass.can_custom_take_part_in_multiple ? 'yes' : 'no'
         });
         setEditingPass(pass);
@@ -976,7 +978,7 @@ const JumpPassComp = () => {
                                         </div>
                                     </div>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+                                    {/* <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
                                         <div>
                                             <span className="text-gray-600">Age Group:</span>
                                             <p className="font-medium">{pass.age_allowed}</p>
@@ -998,6 +1000,34 @@ const JumpPassComp = () => {
                                                     <span className="text-orange-600">No</span>
                                                 )}
                                             </p>
+                                        </div>
+                                    </div> */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 text-sm">
+                                        <div>
+                                            <span className="text-gray-600">Age Group:</span>
+                                            <p className="font-medium">{pass.age_allowed}</p>
+                                        </div>
+                                        <div>
+                                            <span className="text-gray-600">Jump Time:</span>
+                                            <p className="font-medium">{pass.jump_time_allowed}</p>
+                                        </div>
+                                        <div>
+                                            <span className="text-gray-600">Price:</span>
+                                            <p className="font-medium">${finalPrice}</p>
+                                        </div>
+                                        <div>
+                                            <span className="text-gray-600">Tax Included:</span>
+                                            <p className="font-medium">
+                                                {isTaxIncluded ? (
+                                                    <span className="text-green-600">Yes</span>
+                                                ) : (
+                                                    <span className="text-orange-600">No</span>
+                                                )}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <span className="text-gray-600">Roller Booking ID:</span>
+                                            <p className="font-medium">{pass.roller_booking_id || 'N/A'}</p>
                                         </div>
                                     </div>
 
@@ -1118,86 +1148,97 @@ const JumpPassComp = () => {
                                 </select>
                             </div>
 
-                            {/* UPDATED: Dynamic schedule options */}
-                            {/* <div className="md:col-span-2">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+
+                            <div className="md:col-span-2">
+                                <label className="block text-sm font-medium text-gray-700 mb-3">
                                     Schedule With *
                                 </label>
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-2">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
                                     {availableSchedules.map(option => (
-                                        <label key={option} className="flex items-center space-x-2">
-                                            <input
-                                                type="checkbox"
-                                                value={option}
-                                                checked={formData.schedule_with?.includes(option) || false}
-                                                onChange={handleScheduleWithChange}
-                                                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                            />
-                                            <span className="text-sm text-gray-700">{formatScheduleWith(option)}</span>
+                                        <label key={option} className="relative flex items-start p-4 border-2 border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-all duration-200 cursor-pointer">
+                                            <div className="flex items-center h-5">
+                                                <input
+                                                    type="checkbox"
+                                                    value={option}
+                                                    checked={formData.schedule_with?.includes(option) || false}
+                                                    onChange={handleScheduleWithChange}
+                                                    className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 focus:ring-2 focus:ring-offset-2"
+                                                />
+                                            </div>
+                                            <div className="ml-3 text-sm">
+                                                <span className="font-medium text-gray-900 text-base">{formatScheduleWith(option)}</span>
+                                            </div>
                                         </label>
                                     ))}
                                 </div>
                                 {fieldErrors.schedule_with && (
-                                    <p className="mt-1 text-sm text-red-600">{fieldErrors.schedule_with}</p>
+                                    <p className="mt-2 text-sm text-red-600">{fieldErrors.schedule_with}</p>
                                 )}
                                 {availableSchedules.length === 0 && (
-                                    <p className="mt-1 text-sm text-yellow-600">
+                                    <p className="mt-2 text-sm text-yellow-600">
                                         No schedule types available. Please add hours of operation first.
                                     </p>
                                 )}
-                            </div> */}
+                            </div>
 
 
-<div className="md:col-span-2">
-  <label className="block text-sm font-medium text-gray-700 mb-3">
-    Schedule With *
+                            <div className="md:col-span-2">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Pass Name *
+                                        </label>
+                                        <input
+                                            type="text"
+                                            name="pass_name"
+                                            value={formData.pass_name}
+                                            onChange={handleInputChange}
+                                            className={`mt-1 block w-full rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border ${fieldErrors.pass_name ? 'border-red-300' : 'border-gray-300'
+                                                }`}
+                                            placeholder="Enter pass name"
+                                        />
+                                        {fieldErrors.pass_name && (
+                                            <p className="mt-1 text-sm text-red-600">{fieldErrors.pass_name}</p>
+                                        )}
+                                    </div>
+{/* 
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Roller Booking ID
+                                        </label>
+                                        <input
+                                            type="text"
+                                            name="roller_booking_id"
+                                            value={formData.roller_booking_id}
+                                            onChange={handleInputChange}
+                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border"
+                                            placeholder="Enter roller booking ID"
+                                        />
+                                    </div> */}
+
+
+                                    <div>
+  <label className="block text-sm font-medium text-gray-700 mb-2">
+    Roller Booking ID
   </label>
-  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
-    {availableSchedules.map(option => (
-      <label key={option} className="relative flex items-start p-4 border-2 border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-all duration-200 cursor-pointer">
-        <div className="flex items-center h-5">
-          <input
-            type="checkbox"
-            value={option}
-            checked={formData.schedule_with?.includes(option) || false}
-            onChange={handleScheduleWithChange}
-            className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 focus:ring-2 focus:ring-offset-2"
-          />
-        </div>
-        <div className="ml-3 text-sm">
-          <span className="font-medium text-gray-900 text-base">{formatScheduleWith(option)}</span>
-        </div>
-      </label>
-    ))}
-  </div>
-  {fieldErrors.schedule_with && (
-    <p className="mt-2 text-sm text-red-600">{fieldErrors.schedule_with}</p>
-  )}
-  {availableSchedules.length === 0 && (
-    <p className="mt-2 text-sm text-yellow-600">
-      No schedule types available. Please add hours of operation first.
-    </p>
+  <input
+    type="text"
+    name="roller_booking_id"
+    value={formData.roller_booking_id}
+    onChange={handleInputChange}
+    className={`mt-1 block w-full rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border ${
+      fieldErrors.roller_booking_id ? 'border-red-300' : 'border-gray-300'
+    }`}
+    placeholder="Enter roller booking ID"
+  />
+  {fieldErrors.roller_booking_id && (
+    <p className="mt-1 text-sm text-red-600">{fieldErrors.roller_booking_id}</p>
   )}
 </div>
 
-                            <div className="md:col-span-2">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Pass Name *
-                                </label>
-                                <input
-                                    type="text"
-                                    name="pass_name"
-                                    value={formData.pass_name}
-                                    onChange={handleInputChange}
-                                    className={`mt-1 block w-full rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border ${fieldErrors.pass_name ? 'border-red-300' : 'border-gray-300'
-                                        }`}
-                                    placeholder="Enter pass name"
-                                />
-                                {fieldErrors.pass_name && (
-                                    <p className="mt-1 text-sm text-red-600">{fieldErrors.pass_name}</p>
-                                )}
-                            </div>
 
+                                </div>
+                            </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                     Age Allowed *
@@ -1278,6 +1319,32 @@ const JumpPassComp = () => {
                                     </p>
                                 )}
                             </div>
+                            {/* 
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Price *
+                                </label>
+                                <div className="relative">
+                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <span className="text-gray-500 sm:text-sm">$</span>
+                                    </div>
+                                    <input
+                                        type="number"
+                                        name="price"
+                                        value={formData.price}
+                                        onChange={handleInputChange}
+                                        step="0.01"
+                                        min="0"
+                                        className={`mt-1 block w-full pl-7 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border ${fieldErrors.price ? 'border-red-300' : 'border-gray-300'
+                                            }`}
+                                        placeholder="0.00"
+                                    />
+                                </div>
+                                {fieldErrors.price && (
+                                    <p className="mt-1 text-sm text-red-600">{fieldErrors.price}</p>
+                                )}
+                            </div> */}
+
 
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1303,6 +1370,7 @@ const JumpPassComp = () => {
                                     <p className="mt-1 text-sm text-red-600">{fieldErrors.price}</p>
                                 )}
                             </div>
+
 
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1447,4 +1515,3 @@ export default JumpPassComp;
 
 
 
-    
