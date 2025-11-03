@@ -1,5 +1,6 @@
 
 
+
 // Import required React and Redux hooks
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
@@ -1201,7 +1202,7 @@ const JumpPassComp = () => {
                                             <p className="mt-1 text-sm text-red-600">{fieldErrors.pass_name}</p>
                                         )}
                                     </div>
-{/* 
+
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-2">
                                             Roller Booking ID
@@ -1211,30 +1212,14 @@ const JumpPassComp = () => {
                                             name="roller_booking_id"
                                             value={formData.roller_booking_id}
                                             onChange={handleInputChange}
-                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border"
+                                            className={`mt-1 block w-full rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border ${fieldErrors.roller_booking_id ? 'border-red-300' : 'border-gray-300'
+                                                }`}
                                             placeholder="Enter roller booking ID"
                                         />
-                                    </div> */}
-
-
-                                    <div>
-  <label className="block text-sm font-medium text-gray-700 mb-2">
-    Roller Booking ID
-  </label>
-  <input
-    type="text"
-    name="roller_booking_id"
-    value={formData.roller_booking_id}
-    onChange={handleInputChange}
-    className={`mt-1 block w-full rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border ${
-      fieldErrors.roller_booking_id ? 'border-red-300' : 'border-gray-300'
-    }`}
-    placeholder="Enter roller booking ID"
-  />
-  {fieldErrors.roller_booking_id && (
-    <p className="mt-1 text-sm text-red-600">{fieldErrors.roller_booking_id}</p>
-  )}
-</div>
+                                        {fieldErrors.roller_booking_id && (
+                                            <p className="mt-1 text-sm text-red-600">{fieldErrors.roller_booking_id}</p>
+                                        )}
+                                    </div>
 
 
                                 </div>
@@ -1319,32 +1304,6 @@ const JumpPassComp = () => {
                                     </p>
                                 )}
                             </div>
-                            {/* 
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Price *
-                                </label>
-                                <div className="relative">
-                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                        <span className="text-gray-500 sm:text-sm">$</span>
-                                    </div>
-                                    <input
-                                        type="number"
-                                        name="price"
-                                        value={formData.price}
-                                        onChange={handleInputChange}
-                                        step="0.01"
-                                        min="0"
-                                        className={`mt-1 block w-full pl-7 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border ${fieldErrors.price ? 'border-red-300' : 'border-gray-300'
-                                            }`}
-                                        placeholder="0.00"
-                                    />
-                                </div>
-                                {fieldErrors.price && (
-                                    <p className="mt-1 text-sm text-red-600">{fieldErrors.price}</p>
-                                )}
-                            </div> */}
-
 
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">

@@ -24,7 +24,7 @@ const Sidebar = ({ isOpen, activeSection, setActiveSection, onClose }) => {
         { id: 'Hours of Operation', label: 'Hours of Operation', icon: '📊', path: `/hours-of-operation/${location_id}` },
         { id: 'BirthDay packages', label: 'BirthDay packages', icon: '📈' },
         { id: 'Jump Pass', label: 'Jump Pass', icon: '👥', path: `/jump-pass/${location_id}` },
-        { id: 'MemberShip', label: 'MemberShip', icon: '✅' },
+        { id: 'MemberShip', label: 'MemberShip', icon: '✅', path: `/membership/${location_id}` },
         { id: 'Food Items', label: 'Food Items', icon: '📄' },
         { id: 'Item Prices', label: 'Item Prices', icon: '📄' },
         { id: 'Discount', label: 'Discount', icon: '⚙️' },
