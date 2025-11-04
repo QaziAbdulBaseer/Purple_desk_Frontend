@@ -1,17 +1,16 @@
 // Dashboard.jsx
 import React, { useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
-import Locations from '../../components/AdminComponents/Locations';
 import Sidebar from '../../components/AdminComponents/Sidebar';
 import Header from '../../components/AdminComponents/Header';
-import JumpPassComp from '../../components/AdminComponents/JumpPassComp';
 import { useParams } from 'react-router-dom';
+import BirthDayPackagesComp from '../../components/AdminComponents/BirthDayPackagesComp';
 
 
-const JumpPass = () => {
+const BirthDayPackages = () => {
      const { location_id } = useParams();
     const [sidebarOpen, setSidebarOpen] = useState(false);
-    const [activeSection, setActiveSection] = useState('Jump Pass');
+    const [activeSection, setActiveSection] = useState('BirthDay packages');
     const userData = useSelector((state) => state.auth.userData);
 
 
@@ -19,10 +18,10 @@ const JumpPass = () => {
 
     const renderContent = () => {
         switch (activeSection) {
-            case 'Jump Pass':
+            case 'BirthDay packages':
                 return (
                     <div> 
-                        <JumpPassComp />
+                        <BirthDayPackagesComp />
                     </div>
                     )
 
@@ -61,4 +60,4 @@ const JumpPass = () => {
     );
 };
 
-export default JumpPass;
+export default BirthDayPackages;
