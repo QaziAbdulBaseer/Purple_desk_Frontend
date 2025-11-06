@@ -1,5 +1,8 @@
 
-
+// I want you update that compontnet. 
+// First update the icons
+// add the scrolling.
+// Now the problem is the logout is fixed so the policy and Faqs will hidden and mixed the logout
 
 
 // Sidebar.jsx
@@ -23,6 +26,8 @@ const Sidebar = ({ isOpen, activeSection, setActiveSection, onClose }) => {
     const menuItems = [
         { id: 'Hours of Operation', label: 'Hours of Operation', icon: '📊', path: `/hours-of-operation/${location_id}` },
         { id: 'BirthDay packages', label: 'BirthDay packages', icon: '📈' , path: `/birthdat-party-package/${location_id}` },
+        { id: 'Balloon Packages', label: 'Balloon Packages', icon: '📈' , path: `/balloon-party-package/${location_id}` },
+        { id: 'BirthDay And Balloon Association', label: 'BirthDay And Balloon Association', icon: '📈' , path: `/birthday-balloon-party-package-association/${location_id}` },
         { id: 'Jump Pass', label: 'Jump Pass', icon: '👥', path: `/jump-pass/${location_id}` },
         { id: 'MemberShip', label: 'MemberShip', icon: '✅', path: `/membership/${location_id}` },
         { id: 'Food Items', label: 'Food Items', icon: '📄' },
