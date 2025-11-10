@@ -16,8 +16,6 @@ import HoursOperation from './Pages/AdminPages/HoursOperation';
 import JumpPass from './Pages/AdminPages/JumpPass';
 import Membership from './Pages/AdminPages/Membership';
 import BirthDayPackages from './Pages/AdminPages/BirthDayPackages';
-import PartyBalloonPackages from './Pages/AdminPages/PartyBalloonPackages';
-import BirthDayAndBalloonAssociation from './Pages/AdminPages/BirthDayAndBalloonAssociation';
 
 // import Home from './Pages/Home.jsx';
 
@@ -95,22 +93,6 @@ const router = createBrowserRouter([
         element: (
           <AuthLayout authentication={true} userRole={['admin']}>
             <BirthDayPackages />
-          </AuthLayout>
-        ),
-      },
-        {
-        path: "balloon-party-package/:location_id",
-        element: (
-          <AuthLayout authentication={true} userRole={['admin']}>
-            <PartyBalloonPackages />
-          </AuthLayout>
-        ),
-      },
-        {
-        path: "birthday-balloon-party-package-association/:location_id",
-        element: (
-          <AuthLayout authentication={true} userRole={['admin']}>
-            <BirthDayAndBalloonAssociation />
           </AuthLayout>
         ),
       },
