@@ -2,12 +2,79 @@
 // assocate_balloon_packages ,  
 
 
+// Ok now see that code. I wnat you modified. that code
+// i want on every row you give the button to add balloon packages.
+// That button you have to create with every row where already 3 buttons are there (like Deactive/active , edit and delete)
+// You jsut make one more button in every row for the each brithday party
+// when person click on add then open a new componnet. where you have the form to filled for the ballom package for that pirthday package
+// and we donot want to reused. the balloon packages. 
+// for every brithday party package we have to enter all the data. 
+// so i will explan you compleate flow
+// when person come on teh birthday party package page. = birthdat-party-package/1
+// on that page he see the button to add balloon apackage for each presnet birthday party packages. 
+// one he click then an other component open. which show the (if any existing balloon package for that clicked birthday party package)
+// if now then asked to enter a new party packgae
+// and you also have to show the party package on and also give the ediot and deleate button
+// but remember just one it all operate for the birthday party packages
 
+
+// and must tell me were i have to  create new componet or page and where i have to past where code. or repace with funciton
+
+
+// // this is the file structure = = =
+
+
+
+// PS D:\Sybrid\purple_desk\New_purple_desk_frontend> cd src
+// PS D:\Sybrid\purple_desk\New_purple_desk_frontend\src> tree /f
+// Folder PATH listing for volume Data center
+// Volume serial number is C6C6-DE32
+// D:.
+// │   App.jsx
+// │   index.css
+// │   main.jsx
+// │
+// ├───ApiClass
+// │       auth.js
+// │
+// ├───components
+// │   │   AuthLayout.jsx
+// │   │   Header.jsx
+// │   │   Sidebar.jsx
+// │   │
+// │   └───AdminComponents
+// │           BirthDayPackagesComp.jsx
+// │           Header.jsx
+// │           HoursOfOperation.jsx
+// │           HoursOfOperationexp.jsx
+// │           JumpPassComp.jsx
+// │           JumpPassCompEXP.jsx
+// │           Locations.jsx
+// │           MembershipComp.jsx
+// │           Sidebar.jsx
+// │
+// ├───Pages
+// │   │   Home..jsx
+// │   │   Login.jsx
+// │   │
+// │   └───AdminPages
+// │           BirthDayPackages.jsx
+// │           Dashboard.jsx
+// │           HoursOperation.jsx
+// │           JumpPass.jsx
+// │           Membership.jsx
+// │
+// └───store
+//         authSlice.js
+//         store.js
+
+// PS D:\Sybrid\purple_desk\New_purple_desk_frontend\src> 
 
 // BirthdayPackagesUpdate.jsx
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { useParams, useNavigate } from 'react-router-dom';
+import BirthdayBalloonPackages from './BirthdayBalloonPackages';
 
 const BirthdayPackagesUpdate = () => {
   // Get location_id from URL parameters and initialize navigation
@@ -16,6 +83,8 @@ const BirthdayPackagesUpdate = () => {
 
   // Get user data from Redux store
   const userData = useSelector((state) => state.auth.userData);
+  const [balloonModalOpen, setBalloonModalOpen] = useState(false);
+  const [selectedBirthdayPackage, setSelectedBirthdayPackage] = useState(null);
 
   // State declarations for component data management
   const [birthdayPackages, setBirthdayPackages] = useState([]);
@@ -949,7 +1018,7 @@ const BirthdayPackagesUpdate = () => {
                           </div>
                         </div>
                       </div>
-                      <div className="flex space-x-2 ml-4">
+                      {/* <div className="flex space-x-2 ml-4">
                         <button
                           onClick={() => toggleAvailability(pkg)}
                           className={`px-3 py-1 rounded-md border transition-colors ${pkg.is_available ? 'text-orange-600 border-orange-200 hover:border-orange-300' : 'text-green-600 border-green-200 hover:border-green-300'}`}
@@ -968,9 +1037,40 @@ const BirthdayPackagesUpdate = () => {
                         >
                           Delete
                         </button>
-                      </div>
+                      </div> */}
+
+                      <div className="flex space-x-2 ml-4">
+  <button
+    onClick={() => toggleAvailability(pkg)}
+    className={`px-3 py-1 rounded-md border transition-colors ${pkg.is_available ? 'text-orange-600 border-orange-200 hover:border-orange-300' : 'text-green-600 border-green-200 hover:border-green-300'}`}
+  >
+    {pkg.is_available ? 'Deactivate' : 'Activate'}
+  </button>
+  <button
+    onClick={() => {
+      setSelectedBirthdayPackage(pkg);
+      setBalloonModalOpen(true);
+    }}
+    className="text-purple-600 hover:text-purple-800 px-3 py-1 rounded-md border border-purple-200 hover:border-purple-300 transition-colors"
+  >
+    Balloon Packages
+  </button>
+  <button
+    onClick={() => handleEdit(pkg)}
+    className="text-blue-600 hover:text-blue-800 px-3 py-1 rounded-md border border-blue-200 hover:border-blue-300 transition-colors"
+  >
+    Edit
+  </button>
+  <button
+    onClick={() => handleDelete(pkg.birthday_party_packages_id)}
+    className="text-red-600 hover:text-red-800 px-3 py-1 rounded-md border border-red-200 hover:border-red-300 transition-colors"
+  >
+    Delete
+  </button>
+</div>
                     </div>
                   </div>
+                  
 
                   {/* Expandable Details Section */}
                   {isExpanded && (
@@ -1842,6 +1942,17 @@ const BirthdayPackagesUpdate = () => {
             </div>
           </form>
         </div>
+      )}
+           {balloonModalOpen && (
+        <BirthdayBalloonPackages
+          birthdayPackage={selectedBirthdayPackage}
+          location_id={location_id}
+          onClose={() => {
+            setBalloonModalOpen(false);
+            setSelectedBirthdayPackage(null);
+          }}
+          onUpdate={fetchBirthdayPackages}
+        />
       )}
     </div>
   );
