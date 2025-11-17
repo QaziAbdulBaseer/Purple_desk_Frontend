@@ -1,5 +1,6 @@
 
 
+
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
@@ -17,6 +18,8 @@ import JumpPass from './Pages/AdminPages/JumpPass';
 import Membership from './Pages/AdminPages/Membership';
 import BirthDayPackages from './Pages/AdminPages/BirthDayPackages';
 import FAQs from './Pages/AdminPages/FAQs';
+import Policy from './Pages/AdminPages/Policy';
+import Discount from './Pages/AdminPages/Discount';
 
 // import Home from './Pages/Home.jsx';
 
@@ -102,6 +105,22 @@ const router = createBrowserRouter([
         element: (
           <AuthLayout authentication={true} userRole={['admin']}>
             <FAQs />
+          </AuthLayout>
+        ),
+      },
+        {
+        path: "policy/:location_id",
+        element: (
+          <AuthLayout authentication={true} userRole={['admin']}>
+            <Policy />
+          </AuthLayout>
+        ),
+      },
+        {
+        path: "discount/:location_id",
+        element: (
+          <AuthLayout authentication={true} userRole={['admin']}>
+            <Discount />
           </AuthLayout>
         ),
       },

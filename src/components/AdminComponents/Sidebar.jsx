@@ -27,9 +27,9 @@ const Sidebar = ({ isOpen, activeSection, setActiveSection, onClose }) => {
         { id: 'MemberShip', label: 'MemberShip', icon: '✅', path: `/membership/${location_id}` },
         { id: 'Food Items', label: 'Food Items', icon: '📄' },
         { id: 'Item Prices', label: 'Item Prices', icon: '📄' },
-        { id: 'Discount', label: 'Discount', icon: '⚙️' },
+        { id: 'Discount', label: 'Discount', icon: '⚙️' , path: `/discount/${location_id}`  },
         { id: 'Promotions', label: 'Promotions', icon: '⚙️' },
-        { id: 'Policy', label: 'Policy', icon: '⚙️' },
+        { id: 'Policy', label: 'Policy', icon: '⚙️' , path: `/policy/${location_id}`},
         { id: 'FAQs', label: 'FAQs', icon: '⚙️' ,  path: `/FAQs/${location_id}` },
     ];
 
