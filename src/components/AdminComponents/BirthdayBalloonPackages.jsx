@@ -1,6 +1,7 @@
 
 
 
+
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 
@@ -13,6 +14,7 @@ const BirthdayBalloonPackages = ({ birthdayPackage, location_id, onClose, onUpda
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingBalloon, setEditingBalloon] = useState(null);
   const [fieldErrors, setFieldErrors] = useState({});
+  const [availablePriorities, setAvailablePriorities] = useState([]);
 
   const [formData, setFormData] = useState({
     package_name: '',
@@ -26,6 +28,33 @@ const BirthdayBalloonPackages = ({ birthdayPackage, location_id, onClose, onUpda
 
   const getAuthToken = () => {
     return localStorage.getItem('accessToken') || userData?.token;
+  };
+
+  // Generate available priorities based on existing packages
+  const generateAvailablePriorities = (packages, editingPackage = null) => {
+    const basePriorities = [1, 2, 3, 4, 5, 6];
+    const doNotPitchValue = 999;
+    
+    // Get all priorities currently in use (excluding the one being edited)
+    const usedPriorities = packages
+      .filter(pkg => !editingPackage || pkg.balloon_party_packages_id !== editingPackage.balloon_party_packages_id)
+      .map(pkg => pkg.call_flow_priority)
+      .filter(priority => priority !== null && priority !== undefined);
+    
+    // Filter base priorities to only show available ones
+    const availableBasePriorities = basePriorities.filter(
+      priority => !usedPriorities.includes(priority)
+    );
+    
+    // ALWAYS include "Do not pitch" in available options - remove the condition
+    const availableOptions = [...availableBasePriorities, doNotPitchValue];
+    
+    // Sort the options for better UX
+    return availableOptions.sort((a, b) => {
+      if (a === doNotPitchValue) return 1;
+      if (b === doNotPitchValue) return -1;
+      return a - b;
+    });
   };
 
   // Enhanced fetch function with proper error handling
@@ -56,7 +85,11 @@ const BirthdayBalloonPackages = ({ birthdayPackage, location_id, onClose, onUpda
       
       // FIX: Properly handle the API response structure
       // The API returns balloon_packages array directly, not balloon_packages_bridge
-      setBalloonPackages(data.balloon_packages || []);
+      const packages = data.balloon_packages || [];
+      setBalloonPackages(packages);
+      
+      // Generate available priorities whenever packages are fetched
+      setAvailablePriorities(generateAvailablePriorities(packages));
     } catch (err) {
       console.error('Error fetching balloon packages:', err);
       setError(err.message);
@@ -116,8 +149,8 @@ const BirthdayBalloonPackages = ({ birthdayPackage, location_id, onClose, onUpda
 
     if (!formData.call_flow_priority && formData.call_flow_priority !== 0) {
       errors.call_flow_priority = 'Call flow priority is required';
-    } else if (formData.call_flow_priority < 0 || formData.call_flow_priority > 1000) {
-      errors.call_flow_priority = 'Priority must be between 0 and 1000';
+    } else if (formData.call_flow_priority < 0 || (formData.call_flow_priority > 1000 && formData.call_flow_priority !== 999)) {
+      errors.call_flow_priority = 'Priority must be between 0 and 1000 or 999 for "Do not pitch"';
     }
 
     if (!formData.price && formData.price !== 0) {
@@ -257,6 +290,10 @@ const BirthdayBalloonPackages = ({ birthdayPackage, location_id, onClose, onUpda
     });
     
     setEditingBalloon(balloonPackage);
+    
+    // Generate available priorities including the current one being edited
+    setAvailablePriorities(generateAvailablePriorities(balloonPackages, balloonPackage));
+    
     setIsFormOpen(true);
     setError('');
     setSuccess('');
@@ -516,8 +553,12 @@ const BirthdayBalloonPackages = ({ birthdayPackage, location_id, onClose, onUpda
                               {balloonPackage.package_name}
                             </h4>
                             <div className="flex items-center space-x-2 mt-2">
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                Priority: {balloonPackage.call_flow_priority}
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                balloonPackage.call_flow_priority === 999 
+                                  ? 'bg-gray-100 text-gray-800' 
+                                  : 'bg-blue-100 text-blue-800'
+                              }`}>
+                                Priority: {balloonPackage.call_flow_priority === 999 ? 'Do Not Pitch' : balloonPackage.call_flow_priority}
                               </span>
                               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                 ${parseFloat(balloonPackage.price || 0).toFixed(2)}
@@ -658,21 +699,24 @@ const BirthdayBalloonPackages = ({ birthdayPackage, location_id, onClose, onUpda
                       )}
                     </div>
 
-                    {/* Call Flow Priority */}
+                    {/* Call Flow Priority - Updated to Select */}
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-2">
                         Call Flow Priority <span className="text-red-500">*</span>
                       </label>
-                      <input
-                        type="number"
+                      <select
                         name="call_flow_priority"
                         value={formData.call_flow_priority}
                         onChange={handleInputChange}
-                        min="1"
-                        max="1000"
                         className={`w-full rounded-lg border ${fieldErrors.call_flow_priority ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'} px-4 py-3 focus:outline-none focus:ring-2 transition-colors`}
-                        placeholder="Enter priority (1-1000)"
-                      />
+                      >
+                        <option value="">Select Priority</option>
+                        {availablePriorities.map(priority => (
+                          <option key={priority} value={priority}>
+                            {priority === 999 ? 'Do Not Pitch' : `Priority ${priority}`}
+                          </option>
+                        ))}
+                      </select>
                       {fieldErrors.call_flow_priority && (
                         <p className="mt-2 text-sm text-red-600 flex items-center space-x-1">
                           <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -681,7 +725,9 @@ const BirthdayBalloonPackages = ({ birthdayPackage, location_id, onClose, onUpda
                           <span>{fieldErrors.call_flow_priority}</span>
                         </p>
                       )}
-                      <p className="mt-1 text-xs text-gray-500">Lower numbers have higher priority in call flows</p>
+                      <p className="mt-1 text-xs text-gray-500">
+                        "Do Not Pitch" is always available. Other priorities are only available if not already used.
+                      </p>
                     </div>
 
                     {/* Price */}
