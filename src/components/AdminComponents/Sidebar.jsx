@@ -30,7 +30,7 @@ const Sidebar = ({ isOpen, activeSection, setActiveSection, onClose }) => {
         { id: 'Discount', label: 'Discount', icon: '⚙️' },
         { id: 'Promotions', label: 'Promotions', icon: '⚙️' },
         { id: 'Policy', label: 'Policy', icon: '⚙️' },
-        { id: 'FAQs', label: 'FAQs', icon: '⚙️' },
+        { id: 'FAQs', label: 'FAQs', icon: '⚙️' ,  path: `/FAQs/${location_id}` },
     ];
 
     // 👇 Automatically highlight based on the current URL

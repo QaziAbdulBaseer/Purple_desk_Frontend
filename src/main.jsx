@@ -16,6 +16,7 @@ import HoursOperation from './Pages/AdminPages/HoursOperation';
 import JumpPass from './Pages/AdminPages/JumpPass';
 import Membership from './Pages/AdminPages/Membership';
 import BirthDayPackages from './Pages/AdminPages/BirthDayPackages';
+import FAQs from './Pages/AdminPages/FAQs';
 
 // import Home from './Pages/Home.jsx';
 
@@ -93,6 +94,14 @@ const router = createBrowserRouter([
         element: (
           <AuthLayout authentication={true} userRole={['admin']}>
             <BirthDayPackages />
+          </AuthLayout>
+        ),
+      },
+        {
+        path: "FAQs/:location_id",
+        element: (
+          <AuthLayout authentication={true} userRole={['admin']}>
+            <FAQs />
           </AuthLayout>
         ),
       },
