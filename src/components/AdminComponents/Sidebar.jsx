@@ -28,7 +28,7 @@ const Sidebar = ({ isOpen, activeSection, setActiveSection, onClose }) => {
         { id: 'Food Items', label: 'Food Items', icon: '📄' },
         { id: 'Item Prices', label: 'Item Prices', icon: '📄' },
         { id: 'Discount', label: 'Discount', icon: '⚙️' , path: `/discount/${location_id}`  },
-        { id: 'Promotions', label: 'Promotions', icon: '⚙️' },
+        { id: 'Promotions', label: 'Promotions', icon: '⚙️'  , path: `/promotions/${location_id}`  },
         { id: 'Policy', label: 'Policy', icon: '⚙️' , path: `/policy/${location_id}`},
         { id: 'FAQs', label: 'FAQs', icon: '⚙️' ,  path: `/FAQs/${location_id}` },
     ];

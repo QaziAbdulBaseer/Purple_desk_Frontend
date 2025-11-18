@@ -1,6 +1,5 @@
 // Dashboard.jsx
 import React, { useState } from 'react';
-import Sidebar from '../../components/Sidebar';
 import Header from '../../components/Header';
 import { useSelector } from 'react-redux';
 import Locations from '../../components/AdminComponents/Locations';

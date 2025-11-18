@@ -1,18 +1,16 @@
-
-
-// Discount.jsx
+// Dashboard.jsx
 import React, { useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
 import Sidebar from '../../components/AdminComponents/Sidebar';
 import Header from '../../components/AdminComponents/Header';
 import { useParams } from 'react-router-dom';
-import DiscountComp from '../../components/AdminComponents/DiscountComp';
+import PromotionsComp from '../../components/AdminComponents/PromotionsComp';
 
 
-const Discount = () => {
+const Promotions = () => {
      const { location_id } = useParams();
     const [sidebarOpen, setSidebarOpen] = useState(false);
-    const [activeSection, setActiveSection] = useState('Discount');
+    const [activeSection, setActiveSection] = useState('Promotions');
     const userData = useSelector((state) => state.auth.userData);
 
 
@@ -20,9 +18,9 @@ const Discount = () => {
 
     const renderContent = () => {
         switch (activeSection) {
-            case 'Discount':
+            case 'Promotions':
                 return (
-                    <div> <DiscountComp />
+                    <div> <PromotionsComp />
                     </div>)
 
             default:
@@ -58,4 +56,4 @@ const Discount = () => {
     );
 };
 
-export default Discount;
+export default Promotions;

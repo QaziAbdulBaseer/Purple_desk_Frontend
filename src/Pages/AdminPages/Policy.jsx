@@ -1,7 +1,6 @@
 // Dashboard.jsx
 import React, { useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
-import Locations from '../../components/AdminComponents/Locations';
 import Sidebar from '../../components/AdminComponents/Sidebar';
 import Header from '../../components/AdminComponents/Header';
 import { useParams } from 'react-router-dom';
