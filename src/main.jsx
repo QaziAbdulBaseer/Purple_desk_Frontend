@@ -21,6 +21,7 @@ import FAQs from './Pages/AdminPages/FAQs';
 import Policy from './Pages/AdminPages/Policy';
 import Discount from './Pages/AdminPages/Discount';
 import Promotions from './Pages/AdminPages/Promotions';
+import ItemFoodPrices from './Pages/AdminPages/ItemFoodPrices';
 
 // import Home from './Pages/Home.jsx';
 
@@ -130,6 +131,14 @@ const router = createBrowserRouter([
         element: (
           <AuthLayout authentication={true} userRole={['admin']}>
             <Promotions />
+          </AuthLayout>
+        ),
+      },
+        {
+        path: "item-food-prices/:location_id",
+        element: (
+          <AuthLayout authentication={true} userRole={['admin']}>
+            <ItemFoodPrices />
           </AuthLayout>
         ),
       },
