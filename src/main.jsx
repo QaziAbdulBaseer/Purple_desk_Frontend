@@ -24,6 +24,7 @@ import Promotions from './Pages/AdminPages/Promotions';
 import ItemFoodPrices from './Pages/AdminPages/ItemFoodPrices';
 import BalloonPartyPackages from './Pages/AdminPages/BalloonPartyPackages';
 import BalloonPartyPackageManager from './components/AdminComponents/BalloonPartyPackageManager';
+import RentalFacilities from './Pages/AdminPages/RentalFacilities';
 
 // import Home from './Pages/Home.jsx';
 
@@ -149,6 +150,14 @@ const router = createBrowserRouter([
         element: (
           <AuthLayout authentication={true} userRole={['admin']}>
             <ItemFoodPrices />
+          </AuthLayout>
+        ),
+      },
+        {
+        path: "rental-facilities/:location_id",
+        element: (
+          <AuthLayout authentication={true} userRole={['admin']}>
+            <RentalFacilities />
           </AuthLayout>
         ),
       },

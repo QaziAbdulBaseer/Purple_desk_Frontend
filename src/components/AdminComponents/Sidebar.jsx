@@ -27,6 +27,7 @@ const Sidebar = ({ isOpen, activeSection, setActiveSection, onClose }) => {
         { id: 'Jump Pass', label: 'Jump Pass', icon: '👥', path: `/jump-pass/${location_id}` },
         { id: 'MemberShip', label: 'MemberShip', icon: '✅', path: `/membership/${location_id}` },
         { id: 'ItemFoodPrices', label: 'Item Food Prices', icon: '📄' ,  path: `/item-food-prices/${location_id}` },
+        { id: 'Rental Facilities', label: 'Rental Facilities', icon: '📄' ,  path: `/rental-facilities/${location_id}` },
         // { id: 'Item Prices', label: 'Item Prices', icon: '📄' },
         { id: 'Discount', label: 'Discount', icon: '⚙️' , path: `/discount/${location_id}`  },
         { id: 'Promotions', label: 'Promotions', icon: '⚙️'  , path: `/promotions/${location_id}`  },

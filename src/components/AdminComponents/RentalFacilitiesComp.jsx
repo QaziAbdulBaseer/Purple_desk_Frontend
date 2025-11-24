@@ -1,0 +1,678 @@
+
+
+
+import React, { useState, useEffect } from 'react';
+import { useSelector } from 'react-redux';
+import { useParams } from 'react-router-dom';
+
+const RentalFacilitiesComp = () => {
+  const { location_id } = useParams();
+  const userData = useSelector((state) => state.auth.userData);
+  
+  // State declarations
+  const [rentalFacilities, setRentalFacilities] = useState([]);
+  const [location, setLocation] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [editingFacility, setEditingFacility] = useState(null);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
+
+  // Form data state
+  const [formData, setFormData] = useState({
+    rental_jumper_group: '',
+    call_flow_priority: '',
+    per_jumper_price: '',
+    minimum_jumpers: '',
+    instruction: '',
+    inclusions: ''
+  });
+
+  // Function to get authentication token
+  const getAuthToken = () => {
+    return localStorage.getItem('accessToken') || userData?.token;
+  };
+
+  // Fetch location details
+  const fetchLocation = async () => {
+    try {
+      const token = getAuthToken();
+      const response = await fetch(`${import.meta.env.VITE_BackendApi}/locations/${location_id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setLocation(data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch location:', err);
+    }
+  };
+
+  // Fetch rental facilities for the current location
+  const fetchRentalFacilities = async () => {
+    if (!location_id) return;
+
+    setIsLoading(true);
+    setError('');
+    try {
+      const token = getAuthToken();
+      const response = await fetch(`${import.meta.env.VITE_BackendApi}/locations/${location_id}/rental-facilities/`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch rental facilities');
+      }
+
+      const data = await response.json();
+      console.log("Fetched rental facilities:", data);
+      setRentalFacilities(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Handle input changes
+  const handleInputChange = (e) => {
+    const { name, value, type } = e.target;
+
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'number' ? (value === '' ? '' : parseFloat(value)) : value
+    }));
+
+    // Clear field errors when user starts typing
+    if (fieldErrors[name]) {
+      setFieldErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+    }
+  };
+
+  // Handle textarea changes
+  const handleTextareaChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+
+    if (fieldErrors[name]) {
+      setFieldErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+    }
+  };
+
+  // Reset form to initial state
+  const resetForm = () => {
+    setFormData({
+      rental_jumper_group: '',
+      call_flow_priority: '',
+      per_jumper_price: '',
+      minimum_jumpers: '',
+      instruction: '',
+      inclusions: ''
+    });
+    setEditingFacility(null);
+    setError('');
+    setSuccess('');
+    setFieldErrors({});
+  };
+
+  // Validate form data
+  const validateForm = () => {
+    const errors = {};
+    const requiredFields = [
+      'rental_jumper_group',
+      'call_flow_priority',
+      'per_jumper_price',
+      'minimum_jumpers'
+    ];
+
+    requiredFields.forEach(field => {
+      if (!formData[field] && formData[field] !== 0) {
+        errors[field] = `${field.replace(/_/g, ' ')} is required`;
+      }
+    });
+
+    if (formData.call_flow_priority && (formData.call_flow_priority < 1)) {
+      errors.call_flow_priority = 'Call flow priority must be at least 1';
+    }
+
+    if (formData.per_jumper_price && formData.per_jumper_price < 0) {
+      errors.per_jumper_price = 'Per jumper price cannot be negative';
+    }
+
+    if (formData.minimum_jumpers && formData.minimum_jumpers < 1) {
+      errors.minimum_jumpers = 'Minimum jumpers must be at least 1';
+    }
+
+    return errors;
+  };
+
+  // Handle form submission for both create and update
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    const validationErrors = validateForm();
+    if (Object.keys(validationErrors).length > 0) {
+      setFieldErrors(validationErrors);
+      return;
+    }
+
+    setIsLoading(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const token = getAuthToken();
+      const url = editingFacility
+        ? `${import.meta.env.VITE_BackendApi}/locations/${location_id}/rental-facilities/${editingFacility.rental_facility_id}/update/`
+        : `${import.meta.env.VITE_BackendApi}/locations/${location_id}/rental-facilities/create/`;
+
+      const method = editingFacility ? 'PUT' : 'POST';
+
+      // Prepare data for submission
+      const submitData = {
+        ...formData,
+        // Ensure numeric fields are properly formatted
+        per_jumper_price: parseFloat(formData.per_jumper_price).toFixed(2),
+        call_flow_priority: parseInt(formData.call_flow_priority),
+        minimum_jumpers: parseInt(formData.minimum_jumpers)
+      };
+
+      console.log('Submitting data:', submitData);
+
+      const response = await fetch(url, {
+        method: method,
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(submitData)
+      });
+
+      const responseData = await response.json();
+
+      if (!response.ok) {
+        if (response.status === 400) {
+          const backendErrors = formatBackendErrors(responseData);
+          setFieldErrors(backendErrors);
+          setError('Please fix the validation errors below');
+        } else {
+          throw new Error(responseData.error || responseData.detail || 'Failed to save rental facility');
+        }
+        return;
+      }
+
+      const savedFacility = responseData;
+
+      if (editingFacility) {
+        setRentalFacilities(prev => prev.map(facility =>
+          facility.rental_facility_id === savedFacility.rental_facility_id ? savedFacility : facility
+        ));
+        setSuccess('Rental facility updated successfully!');
+      } else {
+        setRentalFacilities(prev => [...prev, savedFacility]);
+        setSuccess('Rental facility created successfully!');
+      }
+
+      resetForm();
+      setIsFormOpen(false);
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Format backend errors for display
+  const formatBackendErrors = (errorData) => {
+    const formattedErrors = {};
+    Object.keys(errorData).forEach(field => {
+      if (Array.isArray(errorData[field])) {
+        formattedErrors[field] = errorData[field].join(', ');
+      } else {
+        formattedErrors[field] = errorData[field];
+      }
+    });
+    return formattedErrors;
+  };
+
+  // Handle edit facility - populate form with existing data
+  const handleEdit = (facility) => {
+    console.log('Editing facility:', facility);
+
+    setFormData({
+      rental_jumper_group: facility.rental_jumper_group || '',
+      call_flow_priority: facility.call_flow_priority || '',
+      per_jumper_price: facility.per_jumper_price || '',
+      minimum_jumpers: facility.minimum_jumpers || '',
+      instruction: facility.instruction || '',
+      inclusions: facility.inclusions || ''
+    });
+
+    setEditingFacility(facility);
+    setIsFormOpen(true);
+    setError('');
+    setSuccess('');
+    setFieldErrors({});
+  };
+
+  // Handle delete facility with confirmation
+  const handleDelete = async (facilityId) => {
+    if (!window.confirm('Are you sure you want to delete this rental facility? This action cannot be undone.')) {
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const token = getAuthToken();
+      const response = await fetch(`${import.meta.env.VITE_BackendApi}/locations/${location_id}/rental-facilities/${facilityId}/delete/`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete rental facility');
+      }
+
+      setRentalFacilities(prev => prev.filter(facility => facility.rental_facility_id !== facilityId));
+      setSuccess('Rental facility deleted successfully!');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Handle bulk upload
+  const handleBulkUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (!file.name.endsWith('.csv')) {
+      setError('Please select a CSV file');
+      return;
+    }
+
+    setIsLoading(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const token = getAuthToken();
+      const formData = new FormData();
+      formData.append('csv_file', file);
+
+      const response = await fetch(`${import.meta.env.VITE_BackendApi}/locations/${location_id}/rental-facilities/bulk-create/`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData
+      });
+
+      const responseData = await response.json();
+
+      if (!response.ok) {
+        throw new Error(responseData.error || 'Failed to upload CSV file');
+      }
+
+      if (responseData.errors && responseData.errors.length > 0) {
+        setError(`Upload completed with ${responseData.errors.length} errors. Created: ${responseData.created_count}`);
+        console.log('Upload errors:', responseData.errors);
+      } else {
+        setSuccess(`Successfully created ${responseData.created_count} rental facilities!`);
+      }
+
+      // Refresh the list
+      fetchRentalFacilities();
+      
+      // Clear file input
+      e.target.value = '';
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Fetch data when component mounts or location_id changes
+  useEffect(() => {
+    if (location_id) {
+      fetchLocation();
+      fetchRentalFacilities();
+    }
+  }, [location_id]);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">Rental Facilities</h2>
+          {location && (
+            <p className="text-gray-600 mt-1">
+              Managing rental facilities for: <span className="font-semibold">{location.location_name}</span>
+            </p>
+          )}
+        </div>
+        <div className="flex space-x-2">
+          {/* Bulk Upload */}
+          <div className="relative">
+            <input
+              type="file"
+              accept=".csv"
+              onChange={handleBulkUpload}
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              id="bulk-upload"
+            />
+            <label
+              htmlFor="bulk-upload"
+              className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors flex items-center space-x-2 cursor-pointer"
+            >
+              <span>📁</span>
+              <span>Bulk Upload CSV</span>
+            </label>
+          </div>
+          
+          <button
+            onClick={() => {
+              resetForm();
+              setIsFormOpen(true);
+            }}
+            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors flex items-center space-x-2"
+          >
+            <span>+</span>
+            <span>Add New Facility</span>
+          </button>
+        </div>
+      </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
+          {error}
+        </div>
+      )}
+      {success && (
+        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-md">
+          {success}
+        </div>
+      )}
+
+      {/* Rental Facilities List */}
+      {!isFormOpen && location_id && (
+        <div className="space-y-4">
+          {rentalFacilities
+            .sort((a, b) => a.call_flow_priority - b.call_flow_priority)
+            .map((facility) => {
+              const perJumperPrice = parseFloat(facility.per_jumper_price || 0).toFixed(2);
+
+              return (
+                <div key={facility.rental_facility_id} className="bg-white rounded-lg shadow-md border border-gray-200 hover:shadow-lg transition-shadow">
+                  <div className="p-6">
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <h3 className="text-xl font-semibold text-gray-900">{facility.rental_jumper_group}</h3>
+                            <div className="flex items-center space-x-4 mt-2">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                Priority: {facility.call_flow_priority}
+                              </span>
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                ${perJumperPrice} per jumper
+                              </span>
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                Min. {facility.minimum_jumpers} jumpers
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Quick Summary Info */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 text-sm">
+                          {facility.instruction && (
+                            <div>
+                              <span className="text-gray-600 text-xs">Instructions:</span>
+                              <p className="font-medium mt-1">{facility.instruction}</p>
+                            </div>
+                          )}
+                          {facility.inclusions && (
+                            <div>
+                              <span className="text-gray-600 text-xs">Inclusions:</span>
+                              <p className="font-medium mt-1">{facility.inclusions}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex space-x-2 ml-4">
+                        <button
+                          onClick={() => handleEdit(facility)}
+                          className="text-blue-600 hover:text-blue-800 px-3 py-1 rounded-md border border-blue-200 hover:border-blue-300 transition-colors"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDelete(facility.rental_facility_id)}
+                          className="text-red-600 hover:text-red-800 px-3 py-1 rounded-md border border-red-200 hover:border-red-300 transition-colors"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          }
+        </div>
+      )}
+
+      {!isFormOpen && location_id && rentalFacilities.length === 0 && !isLoading && (
+        <div className="bg-white rounded-lg shadow p-8 text-center">
+          <div className="text-gray-400 text-6xl mb-4">🏢</div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No Rental Facilities Configured</h3>
+          <p className="text-gray-500 mb-4">Add rental facilities for this location to get started.</p>
+          <button
+            onClick={() => setIsFormOpen(true)}
+            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+          >
+            Add Rental Facility
+          </button>
+        </div>
+      )}
+
+      {isLoading && !isFormOpen && (
+        <div className="flex justify-center items-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        </div>
+      )}
+
+      {/* Rental Facility Form */}
+      {isFormOpen && (
+        <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-6">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-xl font-semibold text-gray-900">
+              {editingFacility ? 'Edit Rental Facility' : 'Add New Rental Facility'}
+            </h3>
+            <button
+              onClick={() => {
+                setIsFormOpen(false);
+                resetForm();
+              }}
+              className="text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              ✕
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Rental Jumper Group */}
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Rental Jumper Group *
+                </label>
+                <input
+                  type="text"
+                  name="rental_jumper_group"
+                  value={formData.rental_jumper_group}
+                  onChange={handleInputChange}
+                  className={`w-full rounded-md border ${fieldErrors.rental_jumper_group ? 'border-red-300' : 'border-gray-300'} px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                  placeholder="e.g., 60 minute rental facility (40 to 75 jumper)"
+                />
+                {fieldErrors.rental_jumper_group && (
+                  <p className="mt-1 text-sm text-red-600">{fieldErrors.rental_jumper_group}</p>
+                )}
+              </div>
+
+              {/* Call Flow Priority */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Call Flow Priority *
+                </label>
+                <input
+                  type="number"
+                  name="call_flow_priority"
+                  value={formData.call_flow_priority}
+                  onChange={handleInputChange}
+                  min="1"
+                  className={`w-full rounded-md border ${fieldErrors.call_flow_priority ? 'border-red-300' : 'border-gray-300'} px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                  placeholder="Priority number"
+                />
+                {fieldErrors.call_flow_priority && (
+                  <p className="mt-1 text-sm text-red-600">{fieldErrors.call_flow_priority}</p>
+                )}
+              </div>
+
+              {/* Per Jumper Price */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Per Jumper Price ($) *
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <span className="text-gray-500">$</span>
+                  </div>
+                  <input
+                    type="number"
+                    name="per_jumper_price"
+                    value={formData.per_jumper_price}
+                    onChange={handleInputChange}
+                    step="0.01"
+                    min="0"
+                    className={`w-full pl-7 rounded-md border ${fieldErrors.per_jumper_price ? 'border-red-300' : 'border-gray-300'} px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                    placeholder="0.00"
+                  />
+                </div>
+                {fieldErrors.per_jumper_price && (
+                  <p className="mt-1 text-sm text-red-600">{fieldErrors.per_jumper_price}</p>
+                )}
+              </div>
+
+              {/* Minimum Jumpers */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Minimum Jumpers *
+                </label>
+                <input
+                  type="number"
+                  name="minimum_jumpers"
+                  value={formData.minimum_jumpers}
+                  onChange={handleInputChange}
+                  min="1"
+                  className={`w-full rounded-md border ${fieldErrors.minimum_jumpers ? 'border-red-300' : 'border-gray-300'} px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                  placeholder="Minimum jumpers required"
+                />
+                {fieldErrors.minimum_jumpers && (
+                  <p className="mt-1 text-sm text-red-600">{fieldErrors.minimum_jumpers}</p>
+                )}
+              </div>
+
+              {/* Instruction */}
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Instructions
+                </label>
+                <textarea
+                  name="instruction"
+                  value={formData.instruction}
+                  onChange={handleTextareaChange}
+                  rows={4}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Instructions for this rental facility..."
+                />
+              </div>
+
+              {/* Inclusions */}
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Inclusions
+                </label>
+                <textarea
+                  name="inclusions"
+                  value={formData.inclusions}
+                  onChange={handleTextareaChange}
+                  rows={3}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="What's included in this rental facility..."
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsFormOpen(false);
+                  resetForm();
+                }}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+              >
+                {isLoading && (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                )}
+                <span>
+                  {isLoading
+                    ? (editingFacility ? 'Updating...' : 'Creating...')
+                    : (editingFacility ? 'Update Facility' : 'Create Facility')
+                  }
+                </span>
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default RentalFacilitiesComp;
