@@ -22,6 +22,8 @@ import Policy from './Pages/AdminPages/Policy';
 import Discount from './Pages/AdminPages/Discount';
 import Promotions from './Pages/AdminPages/Promotions';
 import ItemFoodPrices from './Pages/AdminPages/ItemFoodPrices';
+import BalloonPartyPackages from './Pages/AdminPages/BalloonPartyPackages';
+import BalloonPartyPackageManager from './components/AdminComponents/BalloonPartyPackageManager';
 
 // import Home from './Pages/Home.jsx';
 
@@ -99,6 +101,14 @@ const router = createBrowserRouter([
         element: (
           <AuthLayout authentication={true} userRole={['admin']}>
             <BirthDayPackages />
+          </AuthLayout>
+        ),
+      },
+        {
+        path: "balloon-party-package/:location_id",
+        element: (
+          <AuthLayout authentication={true} userRole={['admin']}>
+            <BalloonPartyPackages />
           </AuthLayout>
         ),
       },

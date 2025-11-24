@@ -1,20 +1,17 @@
 
-
-// BirthdayPackagesUpdate.jsx
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { useParams, useNavigate } from 'react-router-dom';
-import BirthdayBalloonPackages from './BirthdayBalloonPackages';
+import BalloonPackageSelector from './BalloonPackageSelector';
 
-const BirthdayPackagesUpdate = () => {
-  // Get location_id from URL parameters and initialize navigation
+const BirthDayPackagesComp = () => {
   const { location_id } = useParams();
   const navigate = useNavigate();
-
-  // Get user data from Redux store
   const userData = useSelector((state) => state.auth.userData);
+  
   const [balloonModalOpen, setBalloonModalOpen] = useState(false);
   const [selectedBirthdayPackage, setSelectedBirthdayPackage] = useState(null);
+  const [balloonPackages, setBalloonPackages] = useState([]);
 
   // State declarations for component data management
   const [birthdayPackages, setBirthdayPackages] = useState([]);
@@ -34,7 +31,7 @@ const BirthdayPackagesUpdate = () => {
   // State for expanded packages (collapsible functionality)
   const [expandedPackages, setExpandedPackages] = useState({});
 
-  // Form data state initialization with ALL fields from database
+  // Form data state initialization with ALL fields from database including new balloon fields
   const [formData, setFormData] = useState({
     package_name: '',
     birthday_party_priority: '',
@@ -65,7 +62,14 @@ const BirthdayPackagesUpdate = () => {
     each_additional_jump_half_hour_after_room_time: '',
     additional_instructions: '',
     is_available: true,
-    Is_additional_jumpers_allowed: true
+    Is_additional_jumpers_allowed: true,
+    // New balloon package fields
+    balloon_package_included: false,
+    promotion_code: '',
+    credit: '',
+    balloon_party_package: null,
+    // NEW FIELD: is_any_balloon_package_is_free
+    is_any_balloon_package_is_free: false
   });
 
   // State for custom SkySocks input
@@ -97,6 +101,26 @@ const BirthdayPackagesUpdate = () => {
   // Function to get authentication token
   const getAuthToken = () => {
     return localStorage.getItem('accessToken') || userData?.token;
+  };
+
+  // Fetch balloon packages for the location
+  const fetchBalloonPackages = async () => {
+    try {
+      const token = getAuthToken();
+      const response = await fetch(`${import.meta.env.VITE_BackendApi}/balloon-packages/${location_id}/`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setBalloonPackages(data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch balloon packages:', err);
+    }
   };
 
   // Toggle package expansion
@@ -261,6 +285,23 @@ const BirthdayPackagesUpdate = () => {
         each_additional_jump_hour_after_room_time: '',
         each_additional_jump_half_hour_after_room_time: ''
       }));
+    } else if (name === 'balloon_package_included' && !checked) {
+      // When balloon package is unchecked, clear related fields
+      setFormData(prev => ({
+        ...prev,
+        [name]: checked,
+        promotion_code: '',
+        credit: '',
+        balloon_party_package: null,
+        is_any_balloon_package_is_free: false
+      }));
+    } else if (name === 'is_any_balloon_package_is_free' && !checked) {
+      // When free balloon package is unchecked, clear the balloon package selection
+      setFormData(prev => ({
+        ...prev,
+        [name]: checked,
+        balloon_party_package: null
+      }));
     } else {
       setFormData(prev => ({
         ...prev,
@@ -277,6 +318,15 @@ const BirthdayPackagesUpdate = () => {
         [name]: ''
       }));
     }
+  };
+
+  // Handle balloon package selection from modal
+  const handleBalloonPackageSelect = (selectedPackage) => {
+    setFormData(prev => ({
+      ...prev,
+      balloon_party_package: selectedPackage.balloon_party_packages_id
+    }));
+    setBalloonModalOpen(false);
   };
 
   // Handle multi-select changes for schedule with - with dynamic availability days calculation
@@ -424,7 +474,14 @@ const BirthdayPackagesUpdate = () => {
       each_additional_jump_half_hour_after_room_time: '',
       additional_instructions: '',
       is_available: true,
-      Is_additional_jumpers_allowed: true
+      Is_additional_jumpers_allowed: true,
+      // New balloon package fields
+      balloon_package_included: false,
+      promotion_code: '',
+      credit: '',
+      balloon_party_package: null,
+      // NEW FIELD: is_any_balloon_package_is_free
+      is_any_balloon_package_is_free: false
     });
     setEditingPackage(null);
     setIsCustomSkySocks(false);
@@ -483,6 +540,21 @@ const BirthdayPackagesUpdate = () => {
       errors.birthday_party_discount_percentage = 'Discount percentage must be between 0 and 100';
     }
 
+    // Validate balloon package fields if included
+    if (formData.balloon_package_included) {
+      if (!formData.balloon_party_package) {
+        errors.balloon_party_package = 'Please select a balloon package';
+      }
+      if (formData.credit && formData.credit < 0) {
+        errors.credit = 'Credit amount cannot be negative';
+      }
+      
+      // NEW VALIDATION: If free balloon package is selected, ensure a balloon package is chosen
+      if (formData.is_any_balloon_package_is_free && !formData.balloon_party_package) {
+        errors.balloon_party_package = 'Please select a balloon package for the free offer';
+      }
+    }
+
     return errors;
   };
 
@@ -529,7 +601,6 @@ const BirthdayPackagesUpdate = () => {
         : `${import.meta.env.VITE_BackendApi}/birthday-packages/${location_id}/create/`;
 
       const method = editingPackage ? 'PUT' : 'POST';
-      console.log("this is the form data -= ", formData);
 
       // Prepare data for submission
       const submitData = {
@@ -546,7 +617,10 @@ const BirthdayPackagesUpdate = () => {
         // Ensure numeric fields are properly formatted
         price: parseFloat(formData.price).toFixed(2),
         each_additional_jumper_price: parseFloat(formData.each_additional_jumper_price).toFixed(2),
-        birthday_party_discount_percentage: formData.birthday_party_discount_percentage ? parseFloat(formData.birthday_party_discount_percentage) : null
+        birthday_party_discount_percentage: formData.birthday_party_discount_percentage ? parseFloat(formData.birthday_party_discount_percentage) : null,
+        credit: formData.credit ? parseFloat(formData.credit).toFixed(2) : '',
+        // NEW FIELD: include the free balloon package field
+        is_any_balloon_package_is_free: formData.is_any_balloon_package_is_free
       };
 
       console.log('Submitting data:', submitData);
@@ -655,7 +729,11 @@ const BirthdayPackagesUpdate = () => {
       taxIncludedValue = 'False';
     }
 
-    // Populate ALL fields from the database
+    // Get selected balloon package details
+    const selectedBalloonPackage = pkg.balloon_party_package ? 
+      balloonPackages.find(bp => bp.balloon_party_packages_id === pkg.balloon_party_package) : null;
+
+    // Populate ALL fields from the database including new balloon fields
     setFormData({
       package_name: pkg.package_name || '',
       birthday_party_priority: pkg.birthday_party_priority || '',
@@ -686,7 +764,14 @@ const BirthdayPackagesUpdate = () => {
       each_additional_jump_half_hour_after_room_time: pkg.each_additional_jump_half_hour_after_room_time || '',
       additional_instructions: pkg.additional_instructions || '',
       is_available: pkg.is_available !== undefined ? pkg.is_available : true,
-      Is_additional_jumpers_allowed: pkg.Is_additional_jumpers_allowed !== undefined ? pkg.Is_additional_jumpers_allowed : true
+      Is_additional_jumpers_allowed: pkg.Is_additional_jumpers_allowed !== undefined ? pkg.Is_additional_jumpers_allowed : true,
+      // New balloon package fields
+      balloon_package_included: pkg.balloon_package_included || false,
+      promotion_code: pkg.promotion_code || '',
+      credit: pkg.credit || '',
+      balloon_party_package: pkg.balloon_party_package || null,
+      // NEW FIELD: is_any_balloon_package_is_free
+      is_any_balloon_package_is_free: pkg.is_any_balloon_package_is_free || false
     });
 
     setEditingPackage(pkg);
@@ -772,12 +857,20 @@ const BirthdayPackagesUpdate = () => {
     navigate(`/hours-of-operation/${location_id}`);
   };
 
+  // Get selected balloon package name for display
+  const getSelectedBalloonPackageName = () => {
+    if (!formData.balloon_party_package) return null;
+    const selectedPackage = balloonPackages.find(pkg => pkg.balloon_party_packages_id === formData.balloon_party_package);
+    return selectedPackage ? selectedPackage.package_name : null;
+  };
+
   // Fetch data when component mounts or location_id changes
   useEffect(() => {
     if (location_id) {
       fetchLocation();
       fetchBirthdayPackages();
       fetchHoursOfOperation();
+      fetchBalloonPackages();
     }
   }, [location_id]);
 
@@ -879,6 +972,8 @@ const BirthdayPackagesUpdate = () => {
               const additionalJumpHalfHourPrice = pkg.each_additional_jump_half_hour_after_room_time ?
                 parseFloat(pkg.each_additional_jump_half_hour_after_room_time).toFixed(2) : null;
               const isExpanded = expandedPackages[pkg.birthday_party_packages_id];
+              const balloonPackageName = pkg.balloon_party_package ? 
+                balloonPackages.find(bp => bp.balloon_party_packages_id === pkg.balloon_party_package)?.package_name : null;
 
               return (
                 <div key={pkg.birthday_party_packages_id} className="bg-white rounded-lg shadow-md border border-gray-200 hover:shadow-lg transition-shadow">
@@ -923,6 +1018,16 @@ const BirthdayPackagesUpdate = () => {
                                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${pkg.Is_additional_jumpers_allowed ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800'}`}>
                                   Additional Jumpers: {pkg.Is_additional_jumpers_allowed ? 'Allowed' : 'Not Allowed'}
                                 </span>
+                                {pkg.balloon_package_included && (
+                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-pink-100 text-pink-800">
+                                    Balloon Package: Included
+                                  </span>
+                                )}
+                                {pkg.is_any_balloon_package_is_free && (
+                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    Free Balloon Package: Yes
+                                  </span>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -946,9 +1051,37 @@ const BirthdayPackagesUpdate = () => {
                               <p className="font-medium">{pkg.minimum_jumpers}</p>
                             </div>
                           </div>
+
+                          {/* Balloon Package Summary */}
+                          {pkg.balloon_package_included && balloonPackageName && (
+                            <div className="mt-3 p-3 bg-pink-50 rounded-md border border-pink-200">
+                              <div className="flex items-center space-x-2">
+                                <span className="text-pink-600">🎈</span>
+                                <span className="text-sm font-medium text-pink-800">
+                                  Balloon Package: {balloonPackageName}
+                                </span>
+                                {pkg.promotion_code && (
+                                  <span className="text-xs text-pink-600">
+                                    | Promotion: {pkg.promotion_code}
+                                  </span>
+                                )}
+                                {pkg.credit && (
+                                  <span className="text-xs text-pink-600">
+                                    | Credit: ${parseFloat(pkg.credit).toFixed(2)}
+                                  </span>
+                                )}
+                                {pkg.is_any_balloon_package_is_free && (
+                                  <span className="text-xs text-green-600 font-semibold">
+                                    | FREE Balloon Package
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
-                      {/* <div className="flex space-x-2 ml-4">
+
+                      <div className="flex space-x-2 ml-4">
                         <button
                           onClick={() => toggleAvailability(pkg)}
                           className={`px-3 py-1 rounded-md border transition-colors ${pkg.is_available ? 'text-orange-600 border-orange-200 hover:border-orange-300' : 'text-green-600 border-green-200 hover:border-green-300'}`}
@@ -967,40 +1100,9 @@ const BirthdayPackagesUpdate = () => {
                         >
                           Delete
                         </button>
-                      </div> */}
-
-                      <div className="flex space-x-2 ml-4">
-  <button
-    onClick={() => toggleAvailability(pkg)}
-    className={`px-3 py-1 rounded-md border transition-colors ${pkg.is_available ? 'text-orange-600 border-orange-200 hover:border-orange-300' : 'text-green-600 border-green-200 hover:border-green-300'}`}
-  >
-    {pkg.is_available ? 'Deactivate' : 'Activate'}
-  </button>
-  <button
-    onClick={() => {
-      setSelectedBirthdayPackage(pkg);
-      setBalloonModalOpen(true);
-    }}
-    className="text-purple-600 hover:text-purple-800 px-3 py-1 rounded-md border border-purple-200 hover:border-purple-300 transition-colors"
-  >
-    Balloon Packages
-  </button>
-  <button
-    onClick={() => handleEdit(pkg)}
-    className="text-blue-600 hover:text-blue-800 px-3 py-1 rounded-md border border-blue-200 hover:border-blue-300 transition-colors"
-  >
-    Edit
-  </button>
-  <button
-    onClick={() => handleDelete(pkg.birthday_party_packages_id)}
-    className="text-red-600 hover:text-red-800 px-3 py-1 rounded-md border border-red-200 hover:border-red-300 transition-colors"
-  >
-    Delete
-  </button>
-</div>
+                      </div>
                     </div>
                   </div>
-                  
 
                   {/* Expandable Details Section */}
                   {isExpanded && (
@@ -1083,6 +1185,32 @@ const BirthdayPackagesUpdate = () => {
                           </div>
                         </div>
 
+                        {/* Balloon Package Details */}
+                        {pkg.balloon_package_included && (
+                          <div className="p-4 bg-pink-50 rounded-lg border border-pink-200">
+                            <h4 className="font-semibold text-pink-800 mb-3">Balloon Package Details</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                              <div>
+                                <span className="text-gray-600">Balloon Package:</span>
+                                <p className="font-medium text-pink-700">{balloonPackageName || 'Not selected'}</p>
+                              </div>
+                              <div>
+                                <span className="text-gray-600">Promotion Code:</span>
+                                <p className="font-medium">{pkg.promotion_code || 'None'}</p>
+                              </div>
+                              <div>
+                                <span className="text-gray-600">Credit Amount:</span>
+                                <p className="font-medium">${pkg.credit || '0.00'}</p>
+                              </div>
+                              <div>
+                                <span className="text-gray-600">Free Balloon Package:</span>
+                                <p className={`font-medium ${pkg.is_any_balloon_package_is_free ? 'text-green-600' : 'text-gray-600'}`}>
+                                  {pkg.is_any_balloon_package_is_free ? 'Yes' : 'No'}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
 
                         {/* Additional Jump Time Prices */}
                         {pkg.Is_additional_jumpers_allowed && (
@@ -1101,9 +1229,6 @@ const BirthdayPackagesUpdate = () => {
                             )}
                           </div>
                         )}
-
-                        {/* Pitch */}
-
 
                         {/* Additional Details */}
                         {(pkg.food_and_drinks || pkg.paper_goods || pkg.dessert_policy || pkg.other_perks || pkg.outside_food_drinks_fee) && (
@@ -1172,7 +1297,6 @@ const BirthdayPackagesUpdate = () => {
                           <p className="font-medium">{pkg.birthday_party_pitch}</p>
                         </div>
                       )}
-
                     </div>
                   )}
                 </div>
@@ -1468,8 +1592,126 @@ const BirthdayPackagesUpdate = () => {
                       Additional Jumpers Allowed
                     </label>
                   </div>
+
+                  {/* New Balloon Package Included Checkbox */}
+                  <div className="flex items-center space-x-3">
+                    <input
+                      type="checkbox"
+                      name="balloon_package_included"
+                      checked={formData.balloon_package_included}
+                      onChange={handleInputChange}
+                      className="h-5 w-5 text-pink-600 focus:ring-pink-500 border-gray-300 rounded"
+                    />
+                    <label className="block text-sm font-medium text-gray-700">
+                      Balloon Package Included
+                    </label>
+                  </div>
                 </div>
               </div>
+
+              {/* Balloon Package Fields - Conditionally Rendered */}
+              {formData.balloon_package_included && (
+                <>
+                  <div className="md:col-span-3">
+                    <div className="p-4 bg-pink-50 rounded-lg border border-pink-200">
+                      <h4 className="text-lg font-semibold text-pink-800 mb-4">Balloon Package Configuration</h4>
+                      
+                      {/* NEW FIELD: Is any balloon package free? */}
+                      <div className="mb-4">
+                        <div className="flex items-center space-x-3">
+                          <input
+                            type="checkbox"
+                            name="is_any_balloon_package_is_free"
+                            checked={formData.is_any_balloon_package_is_free}
+                            onChange={handleInputChange}
+                            className="h-5 w-5 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                          />
+                          <label className="block text-sm font-medium text-green-700">
+                            Is any balloon package free? (Yes/No)
+                          </label>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1 ml-8">
+                          Check this if the balloon package is offered for free with this birthday package.
+                        </p>
+                      </div>
+                      
+                      {/* Balloon Package Selection */}
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium text-pink-700 mb-2">
+                          Select Balloon Package *
+                        </label>
+                        <div className="flex space-x-4 items-center">
+                          <button
+                            type="button"
+                            onClick={() => setBalloonModalOpen(true)}
+                            className="bg-pink-600 text-white px-4 py-2 rounded-md hover:bg-pink-700 transition-colors"
+                          >
+                            Select Balloon Package
+                          </button>
+                          {formData.balloon_party_package && (
+                            <div className="flex-1">
+                              <p className="text-sm text-pink-800">
+                                Selected: <strong>{getSelectedBalloonPackageName()}</strong>
+                                {formData.is_any_balloon_package_is_free && (
+                                  <span className="ml-2 text-green-600 font-semibold">(FREE)</span>
+                                )}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                        {fieldErrors.balloon_party_package && (
+                          <p className="mt-1 text-sm text-red-600">{fieldErrors.balloon_party_package}</p>
+                        )}
+                        {balloonPackages.length === 0 && (
+                          <p className="mt-2 text-sm text-amber-600">
+                            No balloon packages available. Please create balloon packages first.
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Promotion Code */}
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium text-pink-700 mb-2">
+                          Promotion Code
+                        </label>
+                        <input
+                          type="text"
+                          name="promotion_code"
+                          value={formData.promotion_code}
+                          onChange={handleInputChange}
+                          className="w-full rounded-md border border-pink-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-500"
+                          placeholder="Enter promotion code (optional)"
+                        />
+                      </div>
+
+                      {/* Credit */}
+                      <div>
+                        <label className="block text-sm font-medium text-pink-700 mb-2">
+                          Credit Amount ($)
+                        </label>
+                        <div className="relative">
+                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <span className="text-pink-500">$</span>
+                          </div>
+                          <input
+                            type="number"
+                            name="credit"
+                            value={formData.credit}
+                            onChange={handleInputChange}
+                            step="0.01"
+                            min="0"
+                            className={`w-full pl-7 rounded-md border ${fieldErrors.credit ? 'border-red-300' : 'border-pink-300'} px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-500`}
+                            placeholder="0.00"
+                          />
+                        </div>
+                        {fieldErrors.credit && (
+                          <p className="mt-1 text-sm text-red-600">{fieldErrors.credit}</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
 
               {/* Additional Jump Time Prices - Conditionally Rendered */}
               {formData.Is_additional_jumpers_allowed && (
@@ -1873,19 +2115,17 @@ const BirthdayPackagesUpdate = () => {
           </form>
         </div>
       )}
-           {balloonModalOpen && (
-        <BirthdayBalloonPackages
-          birthdayPackage={selectedBirthdayPackage}
-          location_id={location_id}
-          onClose={() => {
-            setBalloonModalOpen(false);
-            setSelectedBirthdayPackage(null);
-          }}
-          onUpdate={fetchBirthdayPackages}
+
+      {/* Balloon Package Selection Modal */}
+      {balloonModalOpen && (
+        <BalloonPackageSelector
+          balloonPackages={balloonPackages}
+          onClose={() => setBalloonModalOpen(false)}
+          onSelect={handleBalloonPackageSelect}
         />
       )}
     </div>
   );
 };
 
-export default BirthdayPackagesUpdate;
+export default BirthDayPackagesComp;
