@@ -1,17 +1,16 @@
-// RentalFacilitiess.jsx
+// GroupBooking.jsx
 import React, { useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
 import Sidebar from '../../components/AdminComponents/Sidebar';
 import Header from '../../components/AdminComponents/Header';
 import { useParams } from 'react-router-dom';
-import PromotionsComp from '../../components/AdminComponents/PromotionsComp';
-import RentalFacilitiesComp from '../../components/AdminComponents/RentalFacilitiesComp';
+import GroupBookingComp from '../../components/AdminComponents/GroupBookingComp';
 
 
-const RentalFacilities = () => {
+const GroupBooking = () => {
      const { location_id } = useParams();
     const [sidebarOpen, setSidebarOpen] = useState(false);
-    const [activeSection, setActiveSection] = useState('Rental Facilities');
+    const [activeSection, setActiveSection] = useState('Group Booking');
     const userData = useSelector((state) => state.auth.userData);
 
 
@@ -19,9 +18,9 @@ const RentalFacilities = () => {
 
     const renderContent = () => {
         switch (activeSection) {
-            case 'Rental Facilities':
+            case 'Group Booking':
                 return (
-                    <div> <RentalFacilitiesComp />
+                    <div> <GroupBookingComp />
                     </div>)
 
             default:
@@ -57,4 +56,4 @@ const RentalFacilities = () => {
     );
 };
 
-export default RentalFacilities;
+export default GroupBooking;

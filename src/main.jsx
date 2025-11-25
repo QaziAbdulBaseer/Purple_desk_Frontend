@@ -25,6 +25,7 @@ import ItemFoodPrices from './Pages/AdminPages/ItemFoodPrices';
 import BalloonPartyPackages from './Pages/AdminPages/BalloonPartyPackages';
 import BalloonPartyPackageManager from './components/AdminComponents/BalloonPartyPackageManager';
 import RentalFacilities from './Pages/AdminPages/RentalFacilities';
+import GroupBooking from './Pages/AdminPages/GroupBooking';
 
 // import Home from './Pages/Home.jsx';
 
@@ -161,6 +162,15 @@ const router = createBrowserRouter([
           </AuthLayout>
         ),
       },
+        {
+        path: "group-booking/:location_id",
+        element: (
+          <AuthLayout authentication={true} userRole={['admin']}>
+            <GroupBooking />
+          </AuthLayout>
+        ),
+      },
+ 
 
 
         // path: "/dashboard",
