@@ -1,5 +1,8 @@
 
 
+
+
+
 // Import required React and Redux hooks
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
@@ -328,9 +331,9 @@ const MembershipComp = () => {
             errors.party_discount = 'Party discount cannot be negative';
         }
 
-        if (formData.parent_addon_price && formData.parent_addon_price < 0) {
-            errors.parent_addon_price = 'Parent addon price cannot be negative';
-        }
+        // if (formData.parent_addon_price ) {
+        //     errors.parent_addon_price = 'Parent addon price cannot be negative';
+        // }
 
         return errors;
     };
@@ -682,7 +685,7 @@ const MembershipComp = () => {
                                         </div>
                                         <div>
                                             <span className="text-gray-600">Parent Addon:</span>
-                                            <p className="font-medium">{formatCurrency(membership.parent_addon_price)}</p>
+                                            <p className="font-medium">{membership.parent_addon_price}</p>
                                         </div>
                                     </div>
 
@@ -928,19 +931,16 @@ const MembershipComp = () => {
                                     Parent Addon Price
                                 </label>
                                 <div className="relative">
-                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                        <span className="text-gray-500 sm:text-sm">$</span>
-                                    </div>
                                     <input
-                                        type="number"
+                                        type="text"
                                         name="parent_addon_price"
                                         value={formData.parent_addon_price}
                                         onChange={handleInputChange}
-                                        step="0.01"
-                                        min="0"
-                                        className={`mt-1 block w-full pl-7 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border ${fieldErrors.parent_addon_price ? 'border-red-300' : 'border-gray-300'
+                                    
+                                        
+                                        className={`mt-1 block w-full pl-2 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border ${fieldErrors.parent_addon_price ? 'border-red-300' : 'border-gray-300'
                                             }`}
-                                        placeholder="0.00"
+                                        placeholder="10 dollers per month"
                                     />
                                 </div>
                                 {fieldErrors.parent_addon_price && (

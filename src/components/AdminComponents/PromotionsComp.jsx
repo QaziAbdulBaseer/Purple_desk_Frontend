@@ -60,6 +60,7 @@ const PromotionsComp = () => {
     ];
 
     const ELIGIBILITY_TYPES = [
+        { value: '' , label : 'Select Eligibility Type'},
         { value: 'birthday_party_purchase', label: 'Birthday Party Purchase' },
         { value: 'membership_required', label: 'Membership Required' },
         { value: 'glow_purchase', label: 'Glow Purchase' },
@@ -191,7 +192,7 @@ const PromotionsComp = () => {
         setCustomEligibility('');
         setFormData(prev => ({
             ...prev,
-            eligibility_type: 'birthday_party_purchase'
+            eligibility_type: ''
         }));
     };
 
@@ -278,7 +279,7 @@ const PromotionsComp = () => {
             details: '',
             category: '',
             sub_category: '',
-            eligibility_type: 'birthday_party_purchase',
+            eligibility_type: '',
             constraint_value: '',
             instructions: '',
             is_active: true
@@ -299,11 +300,11 @@ const PromotionsComp = () => {
 
     const validateForm = () => {
         const errors = {};
-        const requiredFields = ['promotion_code', 'title', 'details', 'category'];
+        const requiredFields = [ 'title', 'details', 'category'];
 
         requiredFields.forEach(field => {
             if (!formData[field]?.trim()) {
-                errors[field] = `${field.replace(/_/g, ' ')} is required`;
+                errors[field] = `${field?.replace(/_/g, ' ')} is required`;
             }
         });
 
@@ -423,7 +424,7 @@ const PromotionsComp = () => {
             start_time: promotion.start_time || '',
             end_time: promotion.end_time || '',
             schedule_type: promotion.schedule_type,
-            promotion_code: promotion.promotion_code,
+            promotion_code: promotion.promotion_code || '',
             title: promotion.title,
             details: promotion.details,
             category: promotion.category,
@@ -889,7 +890,7 @@ const PromotionsComp = () => {
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                <div className="capitalize">{promotion.eligibility_type.replace(/_/g, ' ')}</div>
+                                                <div className="capitalize">{promotion.eligibility_type?.replace(/_/g, ' ')}</div>
                                                 {promotion.constraint_value && (
                                                     <div className="text-xs text-gray-400">
                                                         Constraint: {promotion.constraint_value}
@@ -1037,7 +1038,7 @@ const PromotionsComp = () => {
                                         <div>
                                             <span className="font-medium">Eligibility:</span>
                                             <span className="ml-1 capitalize text-gray-600">
-                                                {promotion.eligibility_type.replace(/_/g, ' ')}
+                                                {promotion.eligibility_type?.replace(/_/g, ' ')}
                                                 {promotion.constraint_value && ` (Constraint: ${promotion.constraint_value})`}
                                             </span>
                                         </div>
@@ -1135,7 +1136,7 @@ const PromotionsComp = () => {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Promotion Code *
+                                            Promotion Code
                                         </label>
                                         <input
                                             type="text"
@@ -1419,7 +1420,7 @@ const PromotionsComp = () => {
                             <div className="space-y-6">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Eligibility Type *
+                                        Eligibility Type
                                     </label>
                                     {!showCustomEligibility ? (
                                         <select
@@ -1428,6 +1429,8 @@ const PromotionsComp = () => {
                                             onChange={handleEligibilityChange}
                                             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border"
                                         >
+                                            {/* <option value="" defaultChecked>Select Eligibility Type</option> */}
+                                            {/* <option value="" selected>Select Eligibility Type</option> */}
                                             {ELIGIBILITY_TYPES.map(type => (
                                                 <option key={type.value} value={type.value}>{type.label}</option>
                                             ))}

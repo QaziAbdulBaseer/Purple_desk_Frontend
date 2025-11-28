@@ -1133,7 +1133,7 @@ const JumpPassComp = () => {
 
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Can Custom Take Part in Multiple Schedules
+                                    Can Customer Take Part in Multiple Schedules
                                 </label>
                                 <select
                                     name="can_custom_take_part_in_multiple"

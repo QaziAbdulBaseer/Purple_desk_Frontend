@@ -70,14 +70,14 @@ const ItemFoodPricesComp = () => {
     ];
 
     const T_SHIRT_TYPES = [
-        { value: 'cotton', label: 'Cotton' },
-        { value: 'premium_cotton', label: 'Premium Cotton' },
-        { value: 'dry_fit', label: 'Dry Fit' },
+        { value: 'Youth', label: 'Youth' },
+        { value: 'Adult', label: 'Adult' },
+        // { value: 'dry_fit', label: 'Dry Fit' },
         { value: 'glow', label: 'Glow' },
-        { value: 'premium', label: 'Premium' }
+        // { value: 'premium', label: 'Premium' }
     ];
 
-    const T_SHIRT_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
+    // const T_SHIRT_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
 
     // Check if a value is in predefined options
     const isValueInPredefined = (value, options) => {
@@ -239,9 +239,9 @@ const ItemFoodPricesComp = () => {
             errors.item = 'Item name is required';
         }
 
-        if (!formData.price || formData.price <= 0) {
-            errors.price = 'Valid price is required';
-        }
+        // if (!formData.price || formData.price < -1) {
+        //     errors.price = 'Valid price is required';
+        // }
 
         // Mode-specific validations
         if (dataEntryMode === 'category') {
@@ -253,9 +253,9 @@ const ItemFoodPricesComp = () => {
             }
         } else {
             // T-shirt mode validations
-            if (!formData.t_shirt_type) {
-                errors.t_shirt_type = 'T-shirt type is required';
-            }
+            // if (!formData.t_shirt_type) {
+            //     errors.t_shirt_type = 'T-shirt type is required';
+            // }
         }
 
         return errors;
@@ -1243,7 +1243,7 @@ const ItemFoodPricesComp = () => {
                                     <>
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                T-Shirt Type *
+                                                T-Shirt Type
                                             </label>
                                             {showCustomTShirtType ? (
                                                 <div className="space-y-2">
@@ -1293,7 +1293,7 @@ const ItemFoodPricesComp = () => {
                                             )}
                                         </div>
 
-                                        <div>
+                                        {/* <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-2">
                                                 Available Sizes
                                             </label>
@@ -1318,7 +1318,25 @@ const ItemFoodPricesComp = () => {
                                             <p className="mt-2 text-xs text-gray-500">
                                                 Selected: {formData.t_shirt_sizes || 'None'}
                                             </p>
-                                        </div>
+                                        </div> */}
+
+                                         <div>
+      <label className="block text-sm font-medium text-gray-700 mb-2">
+        Available Sizes
+      </label>
+      <input
+        type="text"
+        name="t_shirt_sizes"
+        value={formData.t_shirt_sizes}
+        onChange={handleInputChange}
+        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border"
+        placeholder="Enter sizes (e.g., S, M, L, XL or Small, Medium, Large, or any custom text)"
+      />
+      <p className="mt-1 text-xs text-gray-500">
+        Enter available sizes as comma-separated values or any descriptive text
+      </p>
+    </div>
+    {/* END OF REPLACEMENT */}
 
                                         <div className="flex items-center">
                                             <input

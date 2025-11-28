@@ -15,7 +15,10 @@ const HoursOfOperation = () => {
     const [editingHour, setEditingHour] = useState(null);
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [fieldErrors, setFieldErrors] = useState({});
-
+    const [isCustomSchedule, setIsCustomSchedule] = useState(false);
+    const [customSchedule, setCustomSchedule] = useState('');
+    const [isCustomAges, setIsCustomAges] = useState(false);
+    const [customAges, setCustomAges] = useState('');
     // New state for conflict management
     const [conflicts, setConflicts] = useState([]);
     const [showConflictPopup, setShowConflictPopup] = useState(false);
@@ -65,11 +68,88 @@ const HoursOfOperation = () => {
     ];
 
     // Updated AGES_ALLOWED as requested
-    const AGES_ALLOWED = ['All Ages', '4+', '3+', '5+', 'Family Only', 'Adults Only'];
-    const SCHEDULE_WITH = ['little_leaper', 'open_jump', 'sensory_hour', 'glow'];
+    // const AGES_ALLOWED = ['All Ages', '4+', '3+', '5+', 'Family Only', 'Adults Only'];
+    // const SCHEDULE_WITH = ['little_leaper', 'open_jump', 'sensory_hour', 'glow'];
 
+    const SCHEDULE_WITH = ['little_leaper', 'open_jump', 'sensory_hour', "family fun pack", 'glow', 'custom'];
+    const AGES_ALLOWED = ['All Ages', '6 years old and above', 'For families', '3 years old and above', 'Family Only', 'Member Private Hours', 'For ages 6 and under', 'For ages 3 and above', 'custom'];
     // Define which hours types support multi-day entries
     const MULTI_DAY_TYPES = ['special', 'early_closing', 'late_closing', 'early_opening', 'late_opening', 'closed'];
+
+
+
+    // Add handler functions for custom schedule selection
+    const handleScheduleSelect = (value) => {
+        if (value === 'custom') {
+            setIsCustomSchedule(true);
+            setFormData(prev => ({
+                ...prev,
+                schedule_with: customSchedule || ''
+            }));
+        } else {
+            setIsCustomSchedule(false);
+            setFormData(prev => ({
+                ...prev,
+                schedule_with: value
+            }));
+        }
+    };
+
+    // Add handler functions for custom ages selection
+    const handleAgesSelect = (value) => {
+        if (value === 'custom') {
+            setIsCustomAges(true);
+            setFormData(prev => ({
+                ...prev,
+                ages_allowed: customAges || ''
+            }));
+        } else {
+            setIsCustomAges(false);
+            setFormData(prev => ({
+                ...prev,
+                ages_allowed: value
+            }));
+        }
+    };
+
+
+
+
+
+    // Add handler functions for custom input changes
+    const handleCustomScheduleChange = (e) => {
+        const value = e.target.value;
+        setCustomSchedule(value);
+        setFormData(prev => ({
+            ...prev,
+            schedule_with: value
+        }));
+
+        if (fieldErrors.schedule_with) {
+            setFieldErrors(prev => ({
+                ...prev,
+                schedule_with: ''
+            }));
+        }
+    };
+
+    const handleCustomAgesChange = (e) => {
+        const value = e.target.value;
+        setCustomAges(value);
+        setFormData(prev => ({
+            ...prev,
+            ages_allowed: value
+        }));
+
+        if (fieldErrors.ages_allowed) {
+            setFieldErrors(prev => ({
+                ...prev,
+                ages_allowed: ''
+            }));
+        }
+    };
+
+
 
     // Group hours by same_entry_id for display - UPDATED to handle same submission grouping
     const groupHoursBySameEntryId = (hoursList) => {
@@ -132,158 +212,158 @@ const HoursOfOperation = () => {
 
 
 
-// Enhanced conflict detection function - FIXED for Regular Hours conflicts
-const detectConflicts = (newHour, existingHours, editingId = null) => {
-    const conflicts = [];
-    const processedConflictIds = new Set();
+    // Enhanced conflict detection function - FIXED for Regular Hours conflicts
+    const detectConflicts = (newHour, existingHours, editingId = null) => {
+        const conflicts = [];
+        const processedConflictIds = new Set();
 
-    const newStartDate = newHour.starting_date ? new Date(newHour.starting_date) : null;
-    const newEndDate = newHour.ending_date ? new Date(newHour.ending_date) : newStartDate;
+        const newStartDate = newHour.starting_date ? new Date(newHour.starting_date) : null;
+        const newEndDate = newHour.ending_date ? new Date(newHour.ending_date) : newStartDate;
 
-    existingHours.forEach(existing => {
-        // Skip the hour being edited
-        if (editingId && existing.hours_of_operation_id === editingId) return;
+        existingHours.forEach(existing => {
+            // Skip the hour being edited
+            if (editingId && existing.hours_of_operation_id === editingId) return;
 
-        const existingStartDate = existing.starting_date ? new Date(existing.starting_date) : null;
-        const existingEndDate = existing.ending_date ? new Date(existing.ending_date) : existingStartDate;
+            const existingStartDate = existing.starting_date ? new Date(existing.starting_date) : null;
+            const existingEndDate = existing.ending_date ? new Date(existing.ending_date) : existingStartDate;
 
-        // Check if date ranges overlap
-        const datesOverlap = newStartDate && existingStartDate &&
-            !(newEndDate < existingStartDate || newStartDate > existingEndDate);
+            // Check if date ranges overlap
+            const datesOverlap = newStartDate && existingStartDate &&
+                !(newEndDate < existingStartDate || newStartDate > existingEndDate);
 
-        // Check for day overlap for regular hours
-        const daysOverlap = newHour.hours_type === 'regular' && existing.hours_type === 'regular' &&
-            checkDayOverlap(newHour, existing);
+            // Check for day overlap for regular hours
+            const daysOverlap = newHour.hours_type === 'regular' && existing.hours_type === 'regular' &&
+                checkDayOverlap(newHour, existing);
 
-        if (datesOverlap || daysOverlap) {
-            // BUG FIX: Use a more unique conflict ID that includes the existing hour's ID
-            const conflictId = `${existing.hours_of_operation_id}-${newHour.hours_type}-${existing.hours_type}-${newHour.starting_date}-${newHour.start_time || ''}-${newHour.end_time || ''}`;
-            
-            if (processedConflictIds.has(conflictId)) {
-                console.log('Skipping duplicate conflict:', conflictId);
-                return;
-            }
-            processedConflictIds.add(conflictId);
+            if (datesOverlap || daysOverlap) {
+                // BUG FIX: Use a more unique conflict ID that includes the existing hour's ID
+                const conflictId = `${existing.hours_of_operation_id}-${newHour.hours_type}-${existing.hours_type}-${newHour.starting_date}-${newHour.start_time || ''}-${newHour.end_time || ''}`;
 
-            // Conflict: Trying to close when other hours exist
-            if (newHour.hours_type === 'closed' && existing.hours_type !== 'closed' && isSameDateConflict(newHour, existing)) {
-                conflicts.push({
-                    type: 'CLOSED_WITH_SPECIAL_HOURS',
-                    message: `Cannot mark as closed because there are existing ${existing.hours_type} hours on this date`,
-                    conflictingHour: existing,
-                    severity: 'high',
-                    conflictId: conflictId
-                });
-                return;
-            }
-            
-            // Conflict: Trying to add hours when closed
-            if (newHour.hours_type !== 'closed' && existing.hours_type === 'closed' && isSameDateConflict(newHour, existing)) {
-                conflicts.push({
-                    type: 'HOURS_WHEN_CLOSED',
-                    message: `Cannot add hours because the location is closed on this date`,
-                    conflictingHour: existing,
-                    severity: 'high',
-                    conflictId: conflictId
-                });
-                return;
-            }
-
-            // BUG FIX: Check for Regular Hours conflicts - NEW CONDITION
-            if (newHour.hours_type === 'regular' && existing.hours_type === 'regular' && daysOverlap) {
-                const timeConflict = checkTimeConflict(newHour, existing);
-                if (timeConflict) {
-                    conflicts.push({
-                        type: 'REGULAR_HOURS_OVERLAP',
-                        message: timeConflict,
-                        conflictingHour: existing,
-                        severity: 'medium',
-                        conflictId: conflictId
-                    });
+                if (processedConflictIds.has(conflictId)) {
+                    console.log('Skipping duplicate conflict:', conflictId);
                     return;
                 }
-            }
+                processedConflictIds.add(conflictId);
 
-            // Time-based conflicts for non-closed types with same date
-            if (newHour.hours_type !== 'closed' && existing.hours_type !== 'closed' && isSameDateConflict(newHour, existing)) {
-                const timeConflict = checkTimeConflict(newHour, existing);
-                if (timeConflict) {
+                // Conflict: Trying to close when other hours exist
+                if (newHour.hours_type === 'closed' && existing.hours_type !== 'closed' && isSameDateConflict(newHour, existing)) {
                     conflicts.push({
-                        type: 'TIME_OVERLAP',
-                        message: timeConflict,
-                        conflictingHour: existing,
-                        severity: 'medium',
-                        conflictId: conflictId
-                    });
-                    return;
-                }
-            }
-
-            // Special vs closing/opening conflicts
-            const isSpecialVsClosing = 
-                (newHour.hours_type === 'special' && 
-                 ['early_closing', 'late_closing', 'early_opening', 'late_opening'].includes(existing.hours_type)) ||
-                (existing.hours_type === 'special' && 
-                 ['early_closing', 'late_closing', 'early_opening', 'late_opening'].includes(newHour.hours_type));
-
-            if (isSpecialVsClosing && isSameDateConflict(newHour, existing)) {
-                const specialHour = newHour.hours_type === 'special' ? newHour : existing;
-                const closingHour = newHour.hours_type !== 'special' ? newHour : existing;
-                
-                const timeConflict = checkTimeConflict(specialHour, closingHour);
-                if (timeConflict) {
-                    conflicts.push({
-                        type: 'SPECIAL_WITH_CLOSING_OPENING',
-                        message: timeConflict,
+                        type: 'CLOSED_WITH_SPECIAL_HOURS',
+                        message: `Cannot mark as closed because there are existing ${existing.hours_type} hours on this date`,
                         conflictingHour: existing,
                         severity: 'high',
                         conflictId: conflictId
                     });
                     return;
                 }
+
+                // Conflict: Trying to add hours when closed
+                if (newHour.hours_type !== 'closed' && existing.hours_type === 'closed' && isSameDateConflict(newHour, existing)) {
+                    conflicts.push({
+                        type: 'HOURS_WHEN_CLOSED',
+                        message: `Cannot add hours because the location is closed on this date`,
+                        conflictingHour: existing,
+                        severity: 'high',
+                        conflictId: conflictId
+                    });
+                    return;
+                }
+
+                // BUG FIX: Check for Regular Hours conflicts - NEW CONDITION
+                if (newHour.hours_type === 'regular' && existing.hours_type === 'regular' && daysOverlap) {
+                    const timeConflict = checkTimeConflict(newHour, existing);
+                    if (timeConflict) {
+                        conflicts.push({
+                            type: 'REGULAR_HOURS_OVERLAP',
+                            message: timeConflict,
+                            conflictingHour: existing,
+                            severity: 'medium',
+                            conflictId: conflictId
+                        });
+                        return;
+                    }
+                }
+
+                // Time-based conflicts for non-closed types with same date
+                if (newHour.hours_type !== 'closed' && existing.hours_type !== 'closed' && isSameDateConflict(newHour, existing)) {
+                    const timeConflict = checkTimeConflict(newHour, existing);
+                    if (timeConflict) {
+                        conflicts.push({
+                            type: 'TIME_OVERLAP',
+                            message: timeConflict,
+                            conflictingHour: existing,
+                            severity: 'medium',
+                            conflictId: conflictId
+                        });
+                        return;
+                    }
+                }
+
+                // Special vs closing/opening conflicts
+                const isSpecialVsClosing =
+                    (newHour.hours_type === 'special' &&
+                        ['early_closing', 'late_closing', 'early_opening', 'late_opening'].includes(existing.hours_type)) ||
+                    (existing.hours_type === 'special' &&
+                        ['early_closing', 'late_closing', 'early_opening', 'late_opening'].includes(newHour.hours_type));
+
+                if (isSpecialVsClosing && isSameDateConflict(newHour, existing)) {
+                    const specialHour = newHour.hours_type === 'special' ? newHour : existing;
+                    const closingHour = newHour.hours_type !== 'special' ? newHour : existing;
+
+                    const timeConflict = checkTimeConflict(specialHour, closingHour);
+                    if (timeConflict) {
+                        conflicts.push({
+                            type: 'SPECIAL_WITH_CLOSING_OPENING',
+                            message: timeConflict,
+                            conflictingHour: existing,
+                            severity: 'high',
+                            conflictId: conflictId
+                        });
+                        return;
+                    }
+                }
             }
+        });
+
+        console.log('Final conflicts found:', conflicts.length, 'with IDs:', conflicts.map(c => c.conflictId));
+        return conflicts;
+    };
+
+    // Helper function to check if two hours have the same date conflict
+    const isSameDateConflict = (hour1, hour2) => {
+        // For regular hours, we check day overlap separately, so no need for date check
+        if (hour1.hours_type === 'regular' && hour2.hours_type === 'regular') {
+            return false;
         }
-    });
 
-    console.log('Final conflicts found:', conflicts.length, 'with IDs:', conflicts.map(c => c.conflictId));
-    return conflicts;
-};
+        const hour1StartDate = hour1.starting_date ? new Date(hour1.starting_date) : null;
+        const hour2StartDate = hour2.starting_date ? new Date(hour2.starting_date) : null;
 
-// Helper function to check if two hours have the same date conflict
-const isSameDateConflict = (hour1, hour2) => {
-    // For regular hours, we check day overlap separately, so no need for date check
-    if (hour1.hours_type === 'regular' && hour2.hours_type === 'regular') {
-        return false;
-    }
-    
-    const hour1StartDate = hour1.starting_date ? new Date(hour1.starting_date) : null;
-    const hour2StartDate = hour2.starting_date ? new Date(hour2.starting_date) : null;
-    
-    return hour1StartDate && hour2StartDate && 
-           hour1StartDate.toDateString() === hour2StartDate.toDateString();
-};
+        return hour1StartDate && hour2StartDate &&
+            hour1StartDate.toDateString() === hour2StartDate.toDateString();
+    };
 
 
 
-    
-// Enhanced day overlap check for regular hours
-const checkDayOverlap = (hour1, hour2) => {
-    if (hour1.hours_type !== 'regular' || hour2.hours_type !== 'regular') return false;
 
-    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-    
-    // Handle single day entries
-    const hour1StartIndex = days.indexOf(hour1.starting_day_name);
-    const hour1EndIndex = hour1.ending_day_name ? days.indexOf(hour1.ending_day_name) : hour1StartIndex;
-    
-    const hour2StartIndex = days.indexOf(hour2.starting_day_name);
-    const hour2EndIndex = hour2.ending_day_name ? days.indexOf(hour2.ending_day_name) : hour2StartIndex;
-    
-    // Check if the day ranges overlap
-    const overlap = !(hour1EndIndex < hour2StartIndex || hour1StartIndex > hour2EndIndex);
-    
-    return overlap;
-};
+    // Enhanced day overlap check for regular hours
+    const checkDayOverlap = (hour1, hour2) => {
+        if (hour1.hours_type !== 'regular' || hour2.hours_type !== 'regular') return false;
+
+        const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+        // Handle single day entries
+        const hour1StartIndex = days.indexOf(hour1.starting_day_name);
+        const hour1EndIndex = hour1.ending_day_name ? days.indexOf(hour1.ending_day_name) : hour1StartIndex;
+
+        const hour2StartIndex = days.indexOf(hour2.starting_day_name);
+        const hour2EndIndex = hour2.ending_day_name ? days.indexOf(hour2.ending_day_name) : hour2StartIndex;
+
+        // Check if the day ranges overlap
+        const overlap = !(hour1EndIndex < hour2StartIndex || hour1StartIndex > hour2EndIndex);
+
+        return overlap;
+    };
 
 
 
@@ -626,8 +706,21 @@ const checkDayOverlap = (hour1, hour2) => {
     };
 
     // Format schedule_with for display
+    // const formatScheduleWith = (schedule) => {
+    //     if (!schedule) return 'N/A';
+    //     return schedule.split('_').map(word =>
+    //         word.charAt(0).toUpperCase() + word.slice(1)
+    //     ).join(' ');
+    // };
+
+
+    // Format schedule_with for display
     const formatScheduleWith = (schedule) => {
         if (!schedule) return 'N/A';
+        // If it's a custom value (not in predefined list and not 'closed'), return as is
+        if (schedule !== 'closed' && schedule !== '' && !SCHEDULE_WITH.includes(schedule)) {
+            return schedule;
+        }
         return schedule.split('_').map(word =>
             word.charAt(0).toUpperCase() + word.slice(1)
         ).join(' ');
@@ -660,7 +753,29 @@ const checkDayOverlap = (hour1, hour2) => {
         }
     };
 
-    // Reset form
+    // // Reset form
+    // const resetForm = () => {
+    //     setFormData({
+    //         hours_type: 'regular',
+    //         schedule_with: '',
+    //         ages_allowed: '',
+    //         starting_date: '',
+    //         ending_date: '',
+    //         starting_day_name: '',
+    //         ending_day_name: '',
+    //         start_time: '',
+    //         end_time: '',
+    //         reason: '',
+    //         is_modified: false
+    //     });
+    //     setEditingHour(null);
+    //     setError('');
+    //     setSuccess('');
+    //     setFieldErrors({});
+    // };
+
+
+    // Update the resetForm function to reset the custom states
     const resetForm = () => {
         setFormData({
             hours_type: 'regular',
@@ -676,17 +791,72 @@ const checkDayOverlap = (hour1, hour2) => {
             is_modified: false
         });
         setEditingHour(null);
+        setIsCustomSchedule(false);
+        setIsCustomAges(false);
+        setCustomSchedule('');
+        setCustomAges('');
         setError('');
         setSuccess('');
         setFieldErrors({});
     };
 
-    // Edit hour
+
+
+    // // Edit hour
+    // const handleEdit = (hour) => {
+    //     setFormData({
+    //         hours_type: hour.hours_type,
+    //         schedule_with: hour.schedule_with || '',
+    //         ages_allowed: hour.ages_allowed || '',
+    //         starting_date: hour.starting_date ? hour.starting_date.split('T')[0] : '',
+    //         ending_date: hour.ending_date ? hour.ending_date.split('T')[0] : '',
+    //         starting_day_name: hour.starting_day_name,
+    //         ending_day_name: hour.ending_day_name || '',
+    //         start_time: hour.start_time,
+    //         end_time: hour.end_time,
+    //         reason: hour.reason || '',
+    //         is_modified: hour.is_modified || false
+    //     });
+    //     setEditingHour(hour);
+    //     setIsFormOpen(true);
+    //     setError('');
+    //     setSuccess('');
+    //     setFieldErrors({});
+    // };
+
+
+
+
+    // Update the handleEdit function to handle custom values
     const handleEdit = (hour) => {
+        // Check if schedule_with is a custom value
+        const scheduleValue = hour.schedule_with || '';
+        const isScheduleCustom = scheduleValue && !SCHEDULE_WITH.includes(scheduleValue) && scheduleValue !== 'closed' && scheduleValue !== '';
+
+        // Check if ages_allowed is a custom value  
+        const agesValue = hour.ages_allowed || '';
+        const isAgesCustom = agesValue && !AGES_ALLOWED.includes(agesValue) && agesValue !== 'closed' && agesValue !== '';
+
+        if (isScheduleCustom) {
+            setIsCustomSchedule(true);
+            setCustomSchedule(scheduleValue);
+        } else {
+            setIsCustomSchedule(false);
+            setCustomSchedule('');
+        }
+
+        if (isAgesCustom) {
+            setIsCustomAges(true);
+            setCustomAges(agesValue);
+        } else {
+            setIsCustomAges(false);
+            setCustomAges('');
+        }
+
         setFormData({
             hours_type: hour.hours_type,
-            schedule_with: hour.schedule_with || '',
-            ages_allowed: hour.ages_allowed || '',
+            schedule_with: scheduleValue,
+            ages_allowed: agesValue,
             starting_date: hour.starting_date ? hour.starting_date.split('T')[0] : '',
             ending_date: hour.ending_date ? hour.ending_date.split('T')[0] : '',
             starting_day_name: hour.starting_day_name,
@@ -702,7 +872,6 @@ const checkDayOverlap = (hour1, hour2) => {
         setSuccess('');
         setFieldErrors({});
     };
-
     // Delete hour - Updated with group deletion parameter
     const handleDelete = async (hourId, deleteGroup = false) => {
         return new Promise(async (resolve, reject) => {
@@ -775,7 +944,7 @@ const checkDayOverlap = (hour1, hour2) => {
 
             if (response.ok) {
                 const data = await response.json();
-                console.log("This is the location data = " , data)
+                console.log("This is the location data = ", data)
                 setLocation(data);
             }
         } catch (err) {
@@ -803,7 +972,7 @@ const checkDayOverlap = (hour1, hour2) => {
             }
 
             const data = await response.json();
-            console.log("This is the hours of operation data = " , data)
+            console.log("This is the hours of operation data = ", data)
             setHours(data);
         } catch (err) {
             setError(err.message);
@@ -1024,10 +1193,27 @@ const checkDayOverlap = (hour1, hour2) => {
                                                                 <span className="font-medium text-right">{hour.reason}</span>
                                                             </div>
                                                         )}
-                                                        {hour.schedule_with && hour.schedule_with !== 'closed' && hour.schedule_with !== '' && (
+                                                        {/* {hour.schedule_with && hour.schedule_with !== 'closed' && hour.schedule_with !== '' && (
                                                             <div className="flex justify-between">
                                                                 <span className="text-gray-500">Schedule With:</span>
                                                                 <span className="font-medium">{formatScheduleWith(hour.schedule_with)}</span>
+                                                            </div>
+                                                        )} */}
+
+                                                        {hour.schedule_with && hour.schedule_with !== 'closed' && hour.schedule_with !== '' && (
+                                                            <div className="flex justify-between">
+                                                                <span className="text-gray-600">Schedule With:</span>
+                                                                <span className="font-medium">{formatScheduleWith(hour.schedule_with)}</span>
+                                                            </div>
+                                                        )}
+
+                                                        {hour.ages_allowed && hour.ages_allowed !== 'closed' && hour.ages_allowed !== '' && (
+                                                            <div className="flex justify-between">
+                                                                <span className="text-gray-600">Ages:</span>
+                                                                <span className="font-medium">
+                                                                    {/* Show custom ages as is, no formatting needed */}
+                                                                    {hour.ages_allowed}
+                                                                </span>
                                                             </div>
                                                         )}
                                                     </div>
@@ -1510,7 +1696,7 @@ const checkDayOverlap = (hour1, hour2) => {
                                 </>
                             )}
 
-                            {/* Schedule With - Show only for regular and special hours */}
+                            {/* Schedule With - Show only for regular and special hours
                             {(formData.hours_type === 'regular' || formData.hours_type === 'special') && (
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1534,9 +1720,114 @@ const checkDayOverlap = (hour1, hour2) => {
                                         <p className="mt-1 text-sm text-red-600">{fieldErrors.schedule_with}</p>
                                     )}
                                 </div>
+                            )} */}
+
+
+                            {/* Schedule With - Show only for regular and special hours */}
+                            {(formData.hours_type === 'regular' || formData.hours_type === 'special') && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Schedule With {getRequiredFields(formData.hours_type).includes('schedule_with') && '*'}
+                                    </label>
+
+                                    {!isCustomSchedule ? (
+                                        <select
+                                            value={formData.schedule_with}
+                                            onChange={(e) => handleScheduleSelect(e.target.value)}
+                                            className={`mt-1 block w-full rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border ${fieldErrors.schedule_with ? 'border-red-300' : 'border-gray-300'}`}
+                                        >
+                                            <option value="">Select Schedule Type</option>
+                                            {SCHEDULE_WITH.map(option => (
+                                                <option key={option} value={option}>
+                                                    {option === 'custom' ? 'Custom...' : formatScheduleWith(option)}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    ) : (
+                                        <div className="flex space-x-2">
+                                            <input
+                                                type="text"
+                                                value={customSchedule}
+                                                onChange={handleCustomScheduleChange}
+                                                className={`flex-1 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border ${fieldErrors.schedule_with ? 'border-red-300' : 'border-gray-300'}`}
+                                                placeholder="Enter custom schedule type"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setIsCustomSchedule(false);
+                                                    setCustomSchedule('');
+                                                    setFormData(prev => ({
+                                                        ...prev,
+                                                        schedule_with: ''
+                                                    }));
+                                                }}
+                                                className="px-3 py-2 text-sm text-gray-600 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 transition-colors"
+                                            >
+                                                Cancel
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {fieldErrors.schedule_with && (
+                                        <p className="mt-1 text-sm text-red-600">{fieldErrors.schedule_with}</p>
+                                    )}
+                                </div>
                             )}
 
                             {/* Ages Allowed - Show only for regular and special hours */}
+                            {(formData.hours_type === 'regular' || formData.hours_type === 'special') && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Ages Allowed {getRequiredFields(formData.hours_type).includes('ages_allowed') && '*'}
+                                    </label>
+
+                                    {!isCustomAges ? (
+                                        <select
+                                            value={formData.ages_allowed}
+                                            onChange={(e) => handleAgesSelect(e.target.value)}
+                                            className={`mt-1 block w-full rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border ${fieldErrors.ages_allowed ? 'border-red-300' : 'border-gray-300'}`}
+                                        >
+                                            <option value="">Select Age Group</option>
+                                            {AGES_ALLOWED.map(age => (
+                                                <option key={age} value={age}>
+                                                    {age === 'custom' ? 'Custom...' : age}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    ) : (
+                                        <div className="flex space-x-2">
+                                            <input
+                                                type="text"
+                                                value={customAges}
+                                                onChange={handleCustomAgesChange}
+                                                className={`flex-1 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border ${fieldErrors.ages_allowed ? 'border-red-300' : 'border-gray-300'}`}
+                                                placeholder="Enter custom age group"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setIsCustomAges(false);
+                                                    setCustomAges('');
+                                                    setFormData(prev => ({
+                                                        ...prev,
+                                                        ages_allowed: ''
+                                                    }));
+                                                }}
+                                                className="px-3 py-2 text-sm text-gray-600 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 transition-colors"
+                                            >
+                                                Cancel
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {fieldErrors.ages_allowed && (
+                                        <p className="mt-1 text-sm text-red-600">{fieldErrors.ages_allowed}</p>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Ages Allowed - Show only for regular and special hours
                             {(formData.hours_type === 'regular' || formData.hours_type === 'special') && (
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1558,7 +1849,7 @@ const checkDayOverlap = (hour1, hour2) => {
                                         <p className="mt-1 text-sm text-red-600">{fieldErrors.ages_allowed}</p>
                                     )}
                                 </div>
-                            )}
+                            )} */}
 
                             {/* Reason */}
                             <div className="md:col-span-2">
