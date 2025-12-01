@@ -506,7 +506,7 @@ const JumpPassComp = () => {
             age_allowed: '',
             jump_time_allowed: '',
             price: '',
-            tax_included: 'no',
+            tax_included: 'yes',
             recommendation: '',
             jump_pass_pitch: '',
             starting_day_name: '',

@@ -301,7 +301,7 @@ const BalloonPartyPackageManager = () => {
 
       {/* Balloon Packages List */}
       {!isFormOpen && (
-        <div className="space-y grid grid-cols-3 gap-5">
+        <div className="space-y grid grid-cols- gap-5">
           {balloonPackages
             .sort((a, b) => a.call_flow_priority - b.call_flow_priority)
             .map((pkg) => (
@@ -326,7 +326,7 @@ const BalloonPartyPackageManager = () => {
                     <div className="mt-4 space-y-3">
                       {pkg.promotional_pitch && (
                         <div>
-                          <span className="text-gray-600 text-sm">Promotional Pitch:</span>
+                          <span className="text-gray-600 text-sm ">Promotional Pitch:</span>
                           <p className="font-medium">{pkg.promotional_pitch}</p>
                         </div>
                       )}
