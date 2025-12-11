@@ -1311,7 +1311,7 @@ const BirthDayPackagesComp = () => {
                         </div>
 
                         {/* New Fields Display */}
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                           {pkg.party_environment_name && (
                             <div>
                               <span className="text-gray-600">Party Environment:</span>
@@ -1330,10 +1330,7 @@ const BirthDayPackagesComp = () => {
                               <p className="font-medium">{pkg.drinks_included_count} items</p>
                             </div>
                           )}
-                          <div>
-                            <span className="text-gray-600">Guest of Honour Included:</span>
-                            <p className="font-medium">{pkg.guest_of_honour_included_in_total_jumpers ? 'Yes' : 'No'}</p>
-                          </div>
+
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
@@ -1345,9 +1342,10 @@ const BirthDayPackagesComp = () => {
                             <span className="text-gray-600">Additional Jumper:</span>
                             <p className="font-medium text-lg">${additionalJumperPrice}</p>
                           </div>
+
                           <div>
-                            <span className="text-gray-600">Tax Included:</span>
-                            <p className="font-medium">{taxIncluded ? 'Yes' : 'No'}</p>
+                            <span className="text-gray-600">Guest of Honour Included:</span>
+                            <p className="font-medium">{pkg.guest_of_honour_included_in_total_jumpers ? 'Yes' : 'No'}</p>
                           </div>
                         </div>
 
@@ -1359,6 +1357,10 @@ const BirthDayPackagesComp = () => {
                           <div>
                             <span className="text-gray-600">Discount Percentage:</span>
                             <p className="font-medium">{pkg.birthday_party_discount_percentage || 'None'} %</p>
+                          </div>
+                          <div>
+                            <span className="text-gray-600">Tax Included:</span>
+                            <p className="font-medium">{taxIncluded ? 'Yes' : 'No'}</p>
                           </div>
                         </div>
 

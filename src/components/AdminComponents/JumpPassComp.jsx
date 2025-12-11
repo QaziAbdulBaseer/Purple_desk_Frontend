@@ -1,6 +1,7 @@
 
 
 
+
 // Import required React and Redux hooks
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
@@ -68,8 +69,6 @@ const JumpPassComp = () => {
         { value: 'all day', label: 'All Day' }
     ];
 
-    // REMOVED: Hardcoded SCHEDULE_WITH array - now dynamic
-
     // Yes/No options for form fields
     const YES_NO_OPTIONS = ['yes', 'no'];
 
@@ -82,6 +81,13 @@ const JumpPassComp = () => {
     // Function to get authentication token from localStorage or Redux store
     const getAuthToken = () => {
         return localStorage.getItem('accessToken') || userData?.token;
+    };
+
+    // Function to update jump passes and regenerate priority options
+    const updateJumpPassesAndPriority = (updatedPasses) => {
+        setJumpPasses(updatedPasses);
+        const options = generatePriorityOptions(updatedPasses);
+        setPriorityOptions(options);
     };
 
     // NEW: Function to fetch available schedules from hours of operation
@@ -99,11 +105,10 @@ const JumpPassComp = () => {
 
             if (response.ok) {
                 const data = await response.json();
-                console.log("This is the hours of operation =-= = = = = = = = = =", data)
+                console.log("This is the hours of operation =-= = = = = = = = = =", data);
                 setHoursOfOperation(data);
 
                 // Extract unique schedule_with values from hours of operation
-                // const uniqueSchedules = [...new Set(data.map(hour => hour.schedule_with))].filter(Boolean);
                 const uniqueSchedules = [...new Set(data.map(hour => hour.schedule_with))]
                     .filter(schedule => schedule && schedule !== 'closed');
 
@@ -265,10 +270,7 @@ const JumpPassComp = () => {
             }
 
             const data = await response.json();
-            setJumpPasses(data);
-
-            const options = generatePriorityOptions(data);
-            setPriorityOptions(options);
+            updateJumpPassesAndPriority(data);
         } catch (err) {
             setError(err.message);
         } finally {
@@ -657,12 +659,14 @@ const JumpPassComp = () => {
             const savedPass = responseData;
 
             if (editingPass) {
-                setJumpPasses(prev => prev.map(pass =>
+                const updatedJumpPasses = jumpPasses.map(pass =>
                     pass.jump_pass_id === savedPass.jump_pass_id ? savedPass : pass
-                ));
+                );
+                updateJumpPassesAndPriority(updatedJumpPasses);
                 setSuccess('Jump pass updated successfully!');
             } else {
-                setJumpPasses(prev => [...prev, savedPass]);
+                const updatedJumpPasses = [...jumpPasses, savedPass];
+                updateJumpPassesAndPriority(updatedJumpPasses);
                 setSuccess('Jump pass created successfully!');
             }
 
@@ -763,7 +767,10 @@ const JumpPassComp = () => {
                 throw new Error('Failed to delete jump pass');
             }
 
-            setJumpPasses(prev => prev.filter(pass => pass.jump_pass_id !== passId));
+            // Delete the pass and regenerate priority options
+            const updatedJumpPasses = jumpPasses.filter(pass => pass.jump_pass_id !== passId);
+            updateJumpPassesAndPriority(updatedJumpPasses);
+            
             setSuccess('Jump pass deleted successfully!');
             setTimeout(() => setSuccess(''), 3000);
         } catch (err) {
@@ -947,7 +954,6 @@ const JumpPassComp = () => {
                                             <h3 className="text-xl font-semibold text-gray-900">{pass.pass_name}</h3>
                                             <div className="flex items-center space-x-4 mt-2">
                                                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                                    {/* Priority: {pass.jump_pass_priority} */}
                                                     Priority: {pass.jump_pass_priority === 999 ? 'Do not Pitch' : pass.jump_pass_priority}
                                                 </span>
                                                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
@@ -979,30 +985,6 @@ const JumpPassComp = () => {
                                         </div>
                                     </div>
 
-                                    {/* <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
-                                        <div>
-                                            <span className="text-gray-600">Age Group:</span>
-                                            <p className="font-medium">{pass.age_allowed}</p>
-                                        </div>
-                                        <div>
-                                            <span className="text-gray-600">Jump Time:</span>
-                                            <p className="font-medium">{pass.jump_time_allowed}</p>
-                                        </div>
-                                        <div>
-                                            <span className="text-gray-600">Price:</span>
-                                            <p className="font-medium">${finalPrice}</p>
-                                        </div>
-                                        <div>
-                                            <span className="text-gray-600">Tax Included:</span>
-                                            <p className="font-medium">
-                                                {isTaxIncluded ? (
-                                                    <span className="text-green-600">Yes</span>
-                                                ) : (
-                                                    <span className="text-orange-600">No</span>
-                                                )}
-                                            </p>
-                                        </div>
-                                    </div> */}
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 text-sm">
                                         <div>
                                             <span className="text-gray-600">Age Group:</span>
@@ -1149,7 +1131,6 @@ const JumpPassComp = () => {
                                 </select>
                             </div>
 
-
                             <div className="md:col-span-2">
                                 <label className="block text-sm font-medium text-gray-700 mb-3">
                                     Schedule With *
@@ -1181,7 +1162,6 @@ const JumpPassComp = () => {
                                     </p>
                                 )}
                             </div>
-
 
                             <div className="md:col-span-2">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1220,8 +1200,6 @@ const JumpPassComp = () => {
                                             <p className="mt-1 text-sm text-red-600">{fieldErrors.roller_booking_id}</p>
                                         )}
                                     </div>
-
-
                                 </div>
                             </div>
                             <div>
@@ -1329,7 +1307,6 @@ const JumpPassComp = () => {
                                     <p className="mt-1 text-sm text-red-600">{fieldErrors.price}</p>
                                 )}
                             </div>
-
 
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1470,7 +1447,3 @@ const JumpPassComp = () => {
 };
 
 export default JumpPassComp;
-
-
-
-
